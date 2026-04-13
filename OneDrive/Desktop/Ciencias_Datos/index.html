@@ -141,46 +141,42 @@
     }
     @keyframes shimmer{0%{left:-60%}100%{left:130%}}
 
-    /* ── CONVEYOR ── */
+    /* ── VITAL MONITOR ── */
     .conveyor{
-      position:relative;margin:14px 0 0;height:56px;border-radius:12px;
+      position:relative;margin:14px 0 0;height:72px;border-radius:12px;
       border:1px solid var(--border);
-      background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+      background:linear-gradient(180deg,rgba(2,8,20,.95),rgba(4,12,28,.98));
       overflow:hidden;
     }
-    .belt{
-      position:absolute;left:3%;right:3%;top:50%;height:6px;
-      background:linear-gradient(90deg,var(--border),var(--border2),var(--border));
-      transform:translateY(-50%);border-radius:999px;
+    .conveyor::before{
+      content:"";position:absolute;inset:0;
+      background:repeating-linear-gradient(90deg,transparent 0 59px,rgba(255,255,255,.018) 60px),
+        repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,255,255,.015) 18px);
+      pointer-events:none;
     }
-    .belt::after{
-      content:"";position:absolute;inset:-3px 0;border-radius:999px;
-      background:repeating-linear-gradient(90deg,transparent 0 14px,rgba(255,255,255,.12) 14px 20px);
-      animation:belt 1.6s linear infinite;
+    #vitalCanvas{display:block;width:100%;height:100%}
+    .vital-label{
+      position:absolute;left:12px;top:8px;
+      font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;
+      letter-spacing:1.2px;text-transform:uppercase;color:rgba(0,232,200,.5);
+      pointer-events:none;
     }
-    @keyframes belt{from{background-position:0 0}to{background-position:34px 0}}
-    .packet{
-      position:absolute;top:50%;left:-130px;transform:translateY(-50%);
-      padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;
-      font-family:'JetBrains Mono',monospace;
-      color:var(--ink);opacity:0;white-space:nowrap;
-      box-shadow:0 6px 18px rgba(0,0,0,.3);
+    .vital-stage-lbl{
+      position:absolute;right:12px;top:8px;
+      font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;
+      color:rgba(0,232,200,.45);pointer-events:none;transition:color .4s;
     }
-    .pk-bio{background:linear-gradient(135deg,var(--teal),#00c4a8)}
-    .pk-ds{background:linear-gradient(135deg,var(--amber),#e09a20)}
-    .packet.run{opacity:1;animation:travel 8s linear forwards}
-    .packet.d2{animation-delay:.9s}.packet.d3{animation-delay:1.75s}.packet.d4{animation-delay:2.6s}
-    @keyframes travel{
-      0%{left:-130px;opacity:0}5%{opacity:1}
-      100%{left:calc(100% + 70px);opacity:.9}
+    .vtoken{
+      position:absolute;top:50%;transform:translateY(-50%);
+      font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+      padding:4px 9px;border-radius:6px;white-space:nowrap;
+      pointer-events:none;opacity:0;
     }
-    .scanner{
-      position:absolute;top:10px;bottom:10px;width:12px;border-radius:999px;
-      background:linear-gradient(180deg,transparent,var(--teal),transparent);
-      filter:blur(1px);box-shadow:var(--glow-teal);opacity:0;
+    .vtoken.run{animation:vtokenMove var(--dur,7s) linear forwards}
+    .vtoken.delayed{animation-delay:var(--delay,0s)}
+    @keyframes vtokenMove{
+      0%{left:-140px;opacity:0}4%{opacity:1}96%{opacity:1}100%{left:calc(100% + 80px);opacity:0}
     }
-    .scanner.run{opacity:1;animation:scan 2.4s ease-in-out infinite}
-    @keyframes scan{0%{left:3%;opacity:0}8%{opacity:1}100%{left:95%;opacity:0}}
 
     /* ── BEAMS ── */
     .beam{
@@ -456,8 +452,8 @@
 <body>
 <div class="wrap">
   <div class="hdr">
-    <div class="hdr-eyebrow">CURSO DE CIENCIAS DE DATOS</div>
-    <h1>Flujo completo: Fuentes de Datos → Preparación del Dataset → Knowledge Graph → Base de Datos de Grafos → ML</h1>
+    <div class="hdr-eyebrow">Tesis · UCR · BGP + ML</div>
+    <h1>Flujo completo: fuentes de datos → KG → <em>Machine Learning</em></h1>
     <p>Gestión de datos desde la captura hasta el almacenamiento en Neo4j, listo para el proceso de ML.</p>
   </div>
 
@@ -521,13 +517,11 @@
       </article>
     </div>
 
-    <div class="conveyor">
-      <div class="belt"></div>
-      <div class="scanner" id="scanner"></div>
-      <div class="packet pk-bio" id="p1">LitCovid</div>
-      <div class="packet pk-bio d2" id="p2">DrugBank</div>
-      <div class="packet pk-bio d3" id="p3">UniProt</div>
-      <div class="packet pk-ds d4" id="p4">Kaggle dataset</div>
+    <div class="conveyor" id="conveyorWrap">
+      <canvas id="vitalCanvas"></canvas>
+      <div class="vital-label">MONITOR · PIPELINE</div>
+      <div class="vital-stage-lbl" id="vitalStageLbl">IDLE</div>
+      <div id="tokenLayer"></div>
     </div>
 
     <div id="detailBox">
@@ -548,18 +542,221 @@
 </div>
 
 <script>
-// ──────────────────────────────
-// DOM refs
-// ──────────────────────────────
 const stages = [1,2,3,4,5].map(n=>document.getElementById('stage'+n));
-const packets = ['p1','p2','p3','p4'].map(id=>document.getElementById(id));
 const beams   = ['beam12','beam23','beam34','beam45'].map(id=>document.getElementById(id));
-const scanner = document.getElementById('scanner');
 const statusEl = document.getElementById('statusText');
 const detailBox = document.getElementById('detailBox');
 const detailEye = document.getElementById('detailEye');
 const detailTitle = document.getElementById('detailTitle');
 const detailContent = document.getElementById('detailContent');
+const vitalStageLbl = document.getElementById('vitalStageLbl');
+const tokenLayer = document.getElementById('tokenLayer');
+
+// ── VITAL SIGNS CANVAS ENGINE ──────────────────────────
+const canvas = document.getElementById('vitalCanvas');
+const ctx = canvas.getContext('2d');
+let vitalPoints = [];
+let vitalColor = '#00e8c8';
+let vitalAnimId = null;
+let vitalPhase = 0;
+let vitalPatternIdx = 0;
+
+const STAGE_COLORS = ['#00e8c8','#ffb340','#4a9eff','#4dffa0','#b48fff'];
+const STAGE_LABELS = ['FUENTES','DATASET','KG BUILD','NEO4J','ML'];
+
+// ECG-like patterns per stage (y offsets relative to center, normalized -1..1)
+const PATTERNS = [
+  // Stage 0 — fuentes: pulso suave biomed
+  [0,0,.05,.05,-.05,-.05,0,.8,-.4,.1,0,0,.05,-.05,0,.6,-.3,.08,0,0],
+  // Stage 1 — dataset: spikes binarios (0/1)
+  [0,0,.6,.6,0,0,-.6,-.6,0,0,.6,.6,0,0,-.6,-.6,0,0,.6,.6],
+  // Stage 2 — KG: red pattern, más complejo
+  [0,.1,.4,-.2,.3,-.4,.2,-.1,.5,-.5,.3,-.2,.4,-.3,.1,.2,-.1,.4,-.4,.1],
+  // Stage 3 — Neo4j: almacenamiento, pulso sólido
+  [0,0,.7,.7,.3,.3,-.1,0,.7,.7,.3,.3,-.1,0,.7,.7,.3,.3,-.1,0],
+  // Stage 4 — ML: neural spikes, activo
+  [0,.3,-.2,.5,-.4,.2,-.3,.6,-.5,.3,-.2,.4,-.3,.2,.5,-.4,.3,-.2,.6,-.5],
+];
+
+function resizeCanvas(){
+  const wrap = document.getElementById('conveyorWrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+
+function drawVital(){
+  if(!canvas.width) return;
+  const W = canvas.width, H = canvas.height;
+  const cy = H / 2;
+  const amp = H * 0.28;
+
+  ctx.clearRect(0,0,W,H);
+
+  // trailing glow line
+  const pat = PATTERNS[vitalPatternIdx];
+  const pts = [];
+  const segs = W / (pat.length - 1);
+  for(let i=0;i<pat.length;i++){
+    const px = (i / (pat.length-1)) * W;
+    // shift by phase for scroll effect
+    const shifted = ((i + vitalPhase) % pat.length);
+    const si = Math.floor(shifted) % pat.length;
+    const ni = (si+1) % pat.length;
+    const frac = shifted - Math.floor(shifted);
+    const y = cy - (pat[si]*(1-frac) + pat[ni]*frac) * amp;
+    pts.push({x:px,y});
+  }
+
+  // draw glow (wide, faint)
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for(let i=1;i<pts.length;i++){
+    const mx = (pts[i-1].x + pts[i].x)/2;
+    const my = (pts[i-1].y + pts[i].y)/2;
+    ctx.quadraticCurveTo(pts[i-1].x, pts[i-1].y, mx, my);
+  }
+  ctx.strokeStyle = vitalColor;
+  ctx.lineWidth = 8;
+  ctx.globalAlpha = 0.08;
+  ctx.stroke();
+
+  // draw main line
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for(let i=1;i<pts.length;i++){
+    const mx = (pts[i-1].x + pts[i].x)/2;
+    const my = (pts[i-1].y + pts[i].y)/2;
+    ctx.quadraticCurveTo(pts[i-1].x, pts[i-1].y, mx, my);
+  }
+  ctx.strokeStyle = vitalColor;
+  ctx.lineWidth = 1.8;
+  ctx.globalAlpha = 0.75;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // moving scan dot
+  const dotX = ((vitalPhase * 40) % W);
+  const dotIdx = Math.floor((dotX/W) * (pts.length-1));
+  const dotY = pts[Math.min(dotIdx, pts.length-1)]?.y ?? cy;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 3.5, 0, Math.PI*2);
+  ctx.fillStyle = vitalColor;
+  ctx.globalAlpha = 0.9;
+  ctx.fill();
+  // dot glow
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 8, 0, Math.PI*2);
+  const gr = ctx.createRadialGradient(dotX,dotY,0,dotX,dotY,8);
+  gr.addColorStop(0, vitalColor+'55');
+  gr.addColorStop(1, 'transparent');
+  ctx.fillStyle = gr;
+  ctx.globalAlpha = 1;
+  ctx.fill();
+
+  vitalPhase += 0.055;
+}
+
+function startVital(stageIdx){
+  vitalColor = STAGE_COLORS[stageIdx] || '#00e8c8';
+  vitalPatternIdx = stageIdx;
+  vitalStageLbl.textContent = STAGE_LABELS[stageIdx] || '';
+  vitalStageLbl.style.color = vitalColor;
+  if(!vitalAnimId){
+    (function loop(){vitalAnimId=requestAnimationFrame(loop);drawVital()})();
+  }
+}
+
+function stopVital(){
+  if(vitalAnimId){cancelAnimationFrame(vitalAnimId);vitalAnimId=null;}
+  if(ctx&&canvas.width) ctx.clearRect(0,0,canvas.width,canvas.height);
+  vitalStageLbl.textContent='IDLE';
+  vitalStageLbl.style.color='rgba(0,232,200,.45)';
+}
+
+// ── TOKEN DEFINITIONS per stage ──────────────────────────
+const TOKEN_SETS = [
+  // 0 — fuentes biomédicas
+  [{txt:'LitCovid',bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
+   {txt:'DrugBank',bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
+   {txt:'UniProt', bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
+   {txt:'Kaggle',  bg:'#2d1e00',bdr:'#ffb340',clr:'#ffb340'}],
+  // 1 — dataset encoding
+  [{txt:'Yes→1',bg:'#1a0a12',bdr:'#ff6b8a',clr:'#ff6b8a'},
+   {txt:'No→0', bg:'#0a1020',bdr:'#7a98c4',clr:'#7a98c4'},
+   {txt:'Yes→1',bg:'#1a0a12',bdr:'#ff6b8a',clr:'#ff6b8a'},
+   {txt:'No→0', bg:'#0a1020',bdr:'#7a98c4',clr:'#7a98c4'}],
+  // 2 — KG building
+  [{txt:'RDF triple',   bg:'#001a2d',bdr:'#4a9eff',clr:'#4a9eff'},
+   {txt:':Paciente',    bg:'#0a1a3a',bdr:'#93c5fd',clr:'#93c5fd'},
+   {txt:'[:TIENE]→',   bg:'#1a0a12',bdr:'#ff6b8a',clr:'#ff6b8a'},
+   {txt:':COVID-19',   bg:'#071e10',bdr:'#4dffa0',clr:'#4dffa0'}],
+  // 3 — Neo4j storage
+  [{txt:'Nodo→Neo4j',  bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
+   {txt:'MERGE(n)',    bg:'#001a2d',bdr:'#4a9eff',clr:'#4a9eff'},
+   {txt:'Cypher ✓',   bg:'#071e10',bdr:'#4dffa0',clr:'#4dffa0'},
+   {txt:'Relación ✓', bg:'#22183a',bdr:'#b48fff',clr:'#b48fff'}],
+  // 4 — ML (estático, no cambia)
+  [{txt:'Machine Learning',bg:'#22183a',bdr:'#b48fff',clr:'#b48fff'}],
+];
+
+let tokenTimers=[];
+let mlTokenInterval=null;
+
+function clearTokens(){
+  tokenTimers.forEach(t=>clearTimeout(t));tokenTimers=[];
+  if(mlTokenInterval){clearInterval(mlTokenInterval);mlTokenInterval=null;}
+  tokenLayer.innerHTML='';
+}
+
+function spawnToken(cfg, delayMs, durMs, yOffset){
+  const t=setTimeout(()=>{
+    const el=document.createElement('div');
+    el.className='vtoken run';
+    el.textContent=cfg.txt;
+    el.style.setProperty('--dur', durMs+'ms');
+    el.style.background=cfg.bg;
+    el.style.border='1px solid '+cfg.bdr;
+    el.style.color=cfg.clr;
+    el.style.top=(yOffset!=null ? yOffset+'px' : '50%');
+    el.style.transform=yOffset!=null?'none':'translateY(-50%)';
+    el.style.boxShadow='0 0 10px '+cfg.bdr+'44';
+    tokenLayer.appendChild(el);
+    setTimeout(()=>el.remove(), durMs+200);
+  },delayMs);
+  tokenTimers.push(t);
+}
+
+function launchTokens(stageIdx){
+  clearTokens();
+  const set = TOKEN_SETS[stageIdx];
+  if(!set) return;
+
+  if(stageIdx===4){
+    // ML — un solo token que se queda fijo centrado, no viaja
+    const el=document.createElement('div');
+    el.textContent='Machine Learning';
+    el.style.cssText=`position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+      padding:6px 14px;border-radius:8px;
+      background:#22183a;border:1px solid #b48fff;color:#b48fff;
+      box-shadow:0 0 18px #b48fff44;white-space:nowrap;
+      opacity:0;transition:opacity .6s ease;pointer-events:none;`;
+    tokenLayer.appendChild(el);
+    setTimeout(()=>el.style.opacity='1',300);
+    return;
+  }
+
+  const DUR = 8000;
+  const yPositions=[null,null,null,null]; // null = center 50%
+  set.forEach((cfg,j)=>{
+    spawnToken(cfg, j*1800, DUR, null);
+    // loop them
+    const loopInterval = set.length * 1800;
+    for(let k=1; k<=4; k++){
+      spawnToken(cfg, j*1800 + k*loopInterval, DUR, null);
+    }
+  });
+}
 
 const msgs = [
   'Consumiendo las diferentes fuentes de datos...',
@@ -894,9 +1091,9 @@ function cT(){timers.forEach(t=>clearTimeout(t));timers=[]}
 function resetVisuals(){
   cT();ciT();
   stages.forEach(s=>s.classList.remove('active','done'));
-  packets.forEach(p=>{p.classList.remove('run');void p.offsetWidth});
   beams.forEach(b=>b.classList.remove('run'));
-  scanner.classList.remove('run');
+  stopVital();
+  clearTokens();
   detailBox.classList.remove('visible','hiding');
   detailContent.innerHTML='';
   statusEl.textContent='Listo para iniciar.';
@@ -935,10 +1132,8 @@ function scheduleStep(i){
   stepIdx=i;
   paintStages(i);
   statusEl.textContent=msgs[i];
-  if(i===0){
-    scanner.classList.add('run');
-    packets.forEach(p=>{p.classList.remove('run');void p.offsetWidth;p.classList.add('run')});
-  }
+  startVital(i);
+  launchTokens(i);
   showDetail(i);
   const t=setTimeout(()=>{
     hideDetail(()=>{
@@ -955,6 +1150,9 @@ function pauseSeq(){cT();ciT();playing=false;statusEl.textContent=(stepIdx>=0?ms
 document.getElementById('playBtn').addEventListener('click',playSeq);
 document.getElementById('pauseBtn').addEventListener('click',pauseSeq);
 document.getElementById('resetBtn').addEventListener('click',()=>{cT();resetVisuals()});
+
+resizeCanvas();
+window.addEventListener('resize',()=>{resizeCanvas();if(vitalAnimId) drawVital();});
 resetVisuals();
 </script>
 </body>
