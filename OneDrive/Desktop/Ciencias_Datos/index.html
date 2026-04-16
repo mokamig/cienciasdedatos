@@ -1,35 +1,203 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OSPF entre 2 routers - Packet Tracer Style</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0e1a;color:#e2e8f0;font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
 
-#app{max-width:900px;margin:0 auto;padding:16px}
+body{
+  background:#0a0e1a;
+  color:#e2e8f0;
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+#app{
+  max-width:980px;
+  margin:0 auto;
+  padding:16px;
+}
 
 /* HEADER */
-.hdr{text-align:center;margin-bottom:20px}
-.hdr-title{font-size:22px;font-weight:700;color:#60a5fa;letter-spacing:.04em;margin-bottom:4px}
-.hdr-sub{font-size:13px;color:#64748b}
+.hdr{
+  text-align:center;
+  margin-bottom:14px;
+}
+.hdr-title{
+  font-size:24px;
+  font-weight:700;
+  color:#60a5fa;
+  letter-spacing:.04em;
+  margin-bottom:5px;
+}
+.hdr-sub{
+  font-size:13px;
+  color:#64748b;
+}
 
-/* STAGE INDICATOR */
-.stages-bar{display:flex;gap:0;margin-bottom:20px;border-radius:10px;overflow:hidden;border:1px solid #1e293b}
-.stage-step{flex:1;text-align:center;padding:8px 4px;font-size:11px;font-weight:600;cursor:pointer;transition:all .3s;background:#0f172a;color:#475569;border-right:1px solid #1e293b;letter-spacing:.03em}
+/* TOP CONTROLS */
+.top-controls{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+
+.btn-main{
+  padding:11px 26px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:700;
+  font-family:'Inter',sans-serif;
+  transition:all .2s;
+  letter-spacing:.02em;
+}
+
+.btn-play{background:#1d4ed8;color:#fff}
+.btn-play:hover{background:#2563eb}
+.btn-pause{background:#334155;color:#e2e8f0}
+.btn-pause:hover{background:#475569}
+.btn-reset{background:#0f172a;color:#cbd5e1;border:1px solid #1e293b}
+.btn-reset:hover{border-color:#334155}
+.btn-step{background:#0f172a;color:#cbd5e1;border:1px solid #1e293b}
+.btn-step:hover{border-color:#334155}
+
+.speed-ctl{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:#64748b;
+}
+.speed-ctl input{
+  accent-color:#3b82f6;
+  width:100px;
+}
+
+/* STAGES */
+.stages-bar{
+  display:flex;
+  gap:0;
+  margin-bottom:16px;
+  border-radius:10px;
+  overflow:hidden;
+  border:1px solid #1e293b;
+}
+.stage-step{
+  flex:1;
+  text-align:center;
+  padding:8px 4px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .3s;
+  background:#0f172a;
+  color:#475569;
+  border-right:1px solid #1e293b;
+  letter-spacing:.03em;
+}
 .stage-step:last-child{border-right:none}
 .stage-step.active{background:#1e40af;color:#fff}
 .stage-step.done{background:#14532d;color:#86efac}
-.stage-step .s-num{display:block;font-size:16px;margin-bottom:2px}
+.stage-step .s-num{
+  display:block;
+  font-size:16px;
+  margin-bottom:2px;
+}
+
+.progress-bar{
+  height:4px;
+  background:#1e293b;
+  border-radius:3px;
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,#1d4ed8,#7c3aed);
+  transition:width .3s;
+  border-radius:3px;
+}
+
+/* CURRENT EXCHANGE */
+.exchange-card{
+  background:#0b1220;
+  border:1px solid #1e293b;
+  border-radius:12px;
+  padding:14px 16px;
+  margin-bottom:16px;
+}
+.exchange-top{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
+}
+.ex-badge{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  padding:4px 10px;
+  border-radius:6px;
+  background:#1e293b;
+  color:#cbd5e1;
+}
+.ex-main{
+  font-size:16px;
+  font-weight:700;
+  color:#f8fafc;
+}
+.ex-sub{
+  font-size:13px;
+  color:#94a3b8;
+  line-height:1.7;
+}
+.ex-sub strong{color:#e2e8f0}
+.ex-dir{
+  margin-top:10px;
+  display:inline-block;
+  background:#111827;
+  border:1px solid #334155;
+  color:#60a5fa;
+  border-radius:6px;
+  padding:6px 10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+}
 
 /* CANVAS */
-.canvas-section{position:relative;margin-bottom:16px}
-canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1px solid #1e293b}
+.canvas-section{
+  position:relative;
+  margin-bottom:16px;
+}
+canvas#c{
+  display:block;
+  width:100%;
+  border-radius:12px;
+  background:#060b18;
+  border:1px solid #1e293b;
+}
 
-/* INFO CARD — the star of the show */
-.info-card{background:#0f172a;border:1px solid #1e3a5f;border-radius:12px;padding:18px 20px;margin-bottom:16px;min-height:140px;transition:border-color .4s}
+/* INFO CARD */
+.info-card{
+  background:#0f172a;
+  border:1px solid #1e3a5f;
+  border-radius:12px;
+  padding:18px 20px;
+  margin-bottom:16px;
+  min-height:150px;
+  transition:border-color .4s;
+}
 .info-card.phase-0{border-color:#334155}
 .info-card.phase-1{border-color:#1e40af}
 .info-card.phase-2{border-color:#065f46}
@@ -38,8 +206,19 @@ canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1
 .info-card.phase-5{border-color:#854d0e}
 .info-card.phase-6{border-color:#166534;box-shadow:0 0 24px #16653430}
 
-.info-stage-name{display:inline-flex;align-items:center;gap:8px;margin-bottom:10px}
-.info-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:5px;letter-spacing:.08em}
+.info-stage-name{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+}
+.info-badge{
+  font-size:11px;
+  font-weight:700;
+  padding:3px 10px;
+  border-radius:5px;
+  letter-spacing:.08em;
+}
 .b0{background:#1e293b;color:#94a3b8}
 .b1{background:#1e3a8a;color:#93c5fd}
 .b2{background:#064e3b;color:#6ee7b7}
@@ -48,8 +227,18 @@ canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1
 .b5{background:#713f12;color:#fcd34d}
 .b6{background:#14532d;color:#86efac}
 
-.info-title{font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:8px;line-height:1.3}
-.info-desc{font-size:13px;color:#94a3b8;line-height:1.7}
+.info-title{
+  font-size:18px;
+  font-weight:700;
+  color:#f1f5f9;
+  margin-bottom:8px;
+  line-height:1.3;
+}
+.info-desc{
+  font-size:13px;
+  color:#94a3b8;
+  line-height:1.78;
+}
 .info-desc strong{color:#e2e8f0}
 .info-desc .hl{color:#60a5fa;font-weight:600}
 .info-desc .hg{color:#34d399;font-weight:600}
@@ -57,19 +246,79 @@ canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1
 .info-desc .hp{color:#a78bfa;font-weight:600}
 .info-desc .hr{color:#f87171;font-weight:600}
 
-.facts-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.fact-chip{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:11px;font-family:'JetBrains Mono',monospace}
-.fact-chip span{color:#64748b;margin-right:4px}
+.facts-row{
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+  flex-wrap:wrap;
+}
+.fact-chip{
+  background:#1e293b;
+  border:1px solid #334155;
+  border-radius:6px;
+  padding:5px 10px;
+  font-size:11px;
+  font-family:'JetBrains Mono',monospace;
+}
+.fact-chip span{
+  color:#64748b;
+  margin-right:4px;
+}
 
 /* ROUTER PANELS */
-.r-panels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.r-panel{background:#0f172a;border-radius:10px;border:1px solid #1e293b;padding:12px;transition:border-color .4s}
-.r-panel.active-r{border-color:#3b82f6}
-.rp-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.rp-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
-.rp-info h4{font-size:13px;font-weight:700;color:#f1f5f9}
-.rp-info p{font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace}
-.rp-state{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.06em;margin-bottom:8px}
+.r-panels{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  margin-bottom:16px;
+}
+.r-panel{
+  background:#0f172a;
+  border-radius:10px;
+  border:1px solid #1e293b;
+  padding:12px;
+  transition:border-color .4s;
+}
+.r-panel.active-r{
+  border-color:#3b82f6;
+  box-shadow:0 0 0 1px #3b82f640 inset;
+}
+.rp-hdr{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+}
+.rp-circle{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  font-size:12px;
+  flex-shrink:0;
+}
+.rp-info h4{
+  font-size:13px;
+  font-weight:700;
+  color:#f1f5f9;
+}
+.rp-info p{
+  font-size:10px;
+  color:#64748b;
+  font-family:'JetBrains Mono',monospace;
+}
+.rp-state{
+  display:inline-block;
+  font-size:10px;
+  font-weight:700;
+  padding:2px 8px;
+  border-radius:4px;
+  letter-spacing:.06em;
+  margin-bottom:8px;
+}
 .st-DOWN{background:#1e293b;color:#64748b}
 .st-INIT{background:#1c1917;color:#fb923c}
 .st-2WAY{background:#064e3b;color:#34d399}
@@ -77,14 +326,38 @@ canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1
 .st-EXCHANGE{background:#2e1065;color:#a78bfa}
 .st-LOADING{background:#451a03;color:#fb923c}
 .st-FULL{background:#052e16;color:#4ade80;box-shadow:0 0 8px #4ade8040}
-.rp-fields{font-size:10px;font-family:'JetBrains Mono',monospace}
-.rp-field{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #1e293b;color:#64748b}
+.rp-fields{
+  font-size:10px;
+  font-family:'JetBrains Mono',monospace;
+}
+.rp-field{
+  display:flex;
+  justify-content:space-between;
+  padding:2px 0;
+  border-bottom:1px solid #1e293b;
+  color:#64748b;
+}
 .rp-field:last-child{border-bottom:none}
 .rp-field .fv{color:#cbd5e1}
 
 /* LOG */
-.log-section{background:#060b18;border:1px solid #1e293b;border-radius:10px;padding:10px 14px;margin-bottom:16px;height:90px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px}
-.log-line{display:flex;gap:10px;padding:1.5px 0;border-bottom:1px solid #0f172a}
+.log-section{
+  background:#060b18;
+  border:1px solid #1e293b;
+  border-radius:10px;
+  padding:10px 14px;
+  margin-bottom:16px;
+  height:98px;
+  overflow-y:auto;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+}
+.log-line{
+  display:flex;
+  gap:10px;
+  padding:1.5px 0;
+  border-bottom:1px solid #0f172a;
+}
 .log-line:last-child{border-bottom:none}
 .lt{color:#334155;min-width:52px}
 .lm{color:#94a3b8}
@@ -94,49 +367,46 @@ canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1
 .lm .lp{color:#a78bfa}
 .lm .lr{color:#f87171}
 
-/* CONTROLS */
-.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.btn-main{padding:11px 28px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;transition:all .2s;letter-spacing:.02em}
-.btn-play{background:#1d4ed8;color:#fff}
-.btn-play:hover{background:#2563eb}
-.btn-pause{background:#334155;color:#e2e8f0}
-.btn-pause:hover{background:#475569}
-.btn-reset{background:#0f172a;color:#64748b;border:1px solid #1e293b}
-.btn-reset:hover{color:#e2e8f0;border-color:#334155}
-.btn-step{background:#0f172a;color:#64748b;border:1px solid #1e293b}
-.btn-step:hover{color:#e2e8f0;border-color:#334155}
-.speed-ctl{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:#64748b}
-.speed-ctl input{accent-color:#3b82f6;width:90px}
-
-.progress-bar{height:3px;background:#1e293b;border-radius:3px;overflow:hidden;margin-bottom:16px}
-.progress-fill{height:100%;background:linear-gradient(90deg,#1d4ed8,#7c3aed);transition:width .3s;border-radius:3px}
-
-/* Packet legend */
-.pkt-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.pl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b}
-.pl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+@media (max-width:860px){
+  .r-panels{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="hdr">
-    <div class="hdr-title">⚡ OSPF Neighbor Adjacency</div>
-    <div class="hdr-sub">Simulación de los 7 estados · 3 Routers · Área 0 · Segmentos Broadcast</div>
+    <div class="hdr-title">📨 OSPF entre 2 routers</div>
+    <div class="hdr-sub">Explicación paso a paso · un solo paquete visible · estilo Packet Tracer</div>
+  </div>
+
+  <div class="top-controls">
+    <button class="btn-main btn-play" id="btn-play" onclick="togglePlay()">▶ Iniciar</button>
+    <button class="btn-main btn-reset" onclick="doReset()">↺ Reset</button>
+    <button class="btn-main btn-step" onclick="doStep()">→ Paso</button>
+
+    <div class="speed-ctl">
+      <span>Velocidad</span>
+      <input type="range" min="0.3" max="1.6" step="0.1" value="0.6" oninput="setSpeed(this.value)">
+      <span id="spd-lbl" style="min-width:28px">0.6×</span>
+    </div>
   </div>
 
   <div class="stages-bar" id="stages-bar"></div>
   <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
 
-  <div class="canvas-section">
-    <canvas id="c" height="240"></canvas>
+  <div class="exchange-card">
+    <div class="exchange-top">
+      <span class="ex-badge" id="ex-badge">SIN TRÁFICO</span>
+      <div class="ex-main" id="ex-main">Esperando iniciar simulación</div>
+    </div>
+    <div class="ex-sub" id="ex-sub">
+      Aquí se mostrará el paquete que está viajando y qué función cumple dentro del establecimiento de vecindad OSPF.
+    </div>
+    <div class="ex-dir" id="ex-dir">—</div>
   </div>
 
-  <div class="pkt-legend">
-    <div class="pl-item"><div class="pl-dot" style="background:#3b82f6"></div>Hello</div>
-    <div class="pl-item"><div class="pl-dot" style="background:#f59e0b"></div>DBD</div>
-    <div class="pl-item"><div class="pl-dot" style="background:#a78bfa"></div>LSR</div>
-    <div class="pl-item"><div class="pl-dot" style="background:#34d399"></div>LSU</div>
-    <div class="pl-item"><div class="pl-dot" style="background:#f87171"></div>LSAck</div>
+  <div class="canvas-section">
+    <canvas id="c" height="310"></canvas>
   </div>
 
   <div class="info-card" id="info-card">
@@ -144,271 +414,446 @@ canvas#c{display:block;width:100%;border-radius:12px;background:#060b18;border:1
       <span class="info-badge b0" id="info-badge">ESTADO 0</span>
     </div>
     <div class="info-title" id="info-title">Listo para iniciar</div>
-    <div class="info-desc" id="info-desc">Presiona <strong>▶ Iniciar</strong> para arrancar la simulación completa de OSPF.</div>
+    <div class="info-desc" id="info-desc">Presiona <strong>▶ Iniciar</strong> para ver cómo se forma una vecindad OSPF entre R1 y R2.</div>
     <div class="facts-row" id="facts-row"></div>
   </div>
 
   <div class="r-panels" id="r-panels"></div>
 
   <div class="log-section" id="log"></div>
-
-  <div class="controls">
-    <button class="btn-main btn-play" id="btn-play" onclick="togglePlay()">▶ Iniciar</button>
-    <button class="btn-main btn-reset" onclick="doReset()">↺ Reset</button>
-    <button class="btn-main btn-step" onclick="doStep()">→ Paso</button>
-    <div class="speed-ctl">
-      <span>Velocidad</span>
-      <input type="range" min="0.4" max="2.5" step="0.1" value="1" oninput="setSpeed(this.value)" id="spd-in">
-      <span id="spd-lbl" style="min-width:28px">1×</span>
-    </div>
-  </div>
 </div>
 
 <script>
-// ─── DATA ─────────────────────────────────────────────────────────────────────
 const R = [
-  {id:'R1',rid:'1.1.1.1',col:'#3b82f6',bg:'#1e3a8a',ip12:'192.168.12.1',ip23:null,pri:100},
-  {id:'R2',rid:'2.2.2.2',col:'#f87171',bg:'#7f1d1d',ip12:'192.168.12.2',ip23:'192.168.23.1',pri:50},
-  {id:'R3',rid:'3.3.3.3',col:'#34d399',bg:'#064e3b',ip12:null,ip23:'192.168.23.2',pri:75},
+  {id:'R1',rid:'1.1.1.1',col:'#3b82f6',bg:'#1e3a8a',ip:'192.168.12.1',pri:100},
+  {id:'R2',rid:'2.2.2.2',col:'#f87171',bg:'#7f1d1d',ip:'192.168.12.2',pri:50}
 ];
 
 const STAGES = [
   {
     lbl:'DOWN', icon:'💤', bdgClass:'b0',
-    title:'Estado DOWN — Silencio total en la red',
-    desc:`Los routers acaban de encender el proceso OSPF. <span class="hl">No existe ningún vecino conocido</span>. Las interfaces están en estado "Down". El proceso OSPF escucha en <span class="hy">224.0.0.5</span> (AllSPFRouters) pero todavía no ha enviado ni recibido nada. Es el estado inicial y también al que se vuelve si el <span class="hr">Dead Timer</span> expira sin recibir un Hello.`,
-    facts:[['Timer Hello','10 seg'],['Timer Dead','40 seg'],['Área','0.0.0.0'],['Tipo Red','Broadcast']],
-    states:['DOWN','DOWN','DOWN'],
-    nbrs:['—','—','—'],
-    dr:'—', bdr:'—',
-    pkts:[]
+    title:'Estado DOWN — No existe vecindad todavía',
+    desc:`En <span class="hr">DOWN</span>, los routers aún no se reconocen como vecinos. OSPF puede estar habilitado en la interfaz, pero todavía no se ha recibido ningún Hello válido del otro lado. En este punto, no existe información del vecino en la tabla OSPF. Si antes existía vecindad y el <span class="hy">Dead Timer</span> expiró, el vecino vuelve a DOWN.`,
+    facts:[['Estado','DOWN'],['Hello Timer','10 s'],['Dead Timer','40 s'],['Vecino','No conocido']],
+    states:['DOWN','DOWN'],
+    activePacket:null
   },
   {
     lbl:'INIT', icon:'📡', bdgClass:'b1',
-    title:'Estado INIT — ¡Los Hellos salen a la red!',
-    desc:`Cada router envía paquetes <span class="hl">Hello</span> por multicast a <span class="hy">224.0.0.5</span>. El Hello contiene: <strong>Router-ID</strong>, <strong>Area-ID</strong>, máscara de red, Hello/Dead intervals, prioridad, y la lista de vecinos conocidos (vacía aún). Al recibir un Hello de un desconocido, el router entra a estado INIT. <span class="hr">Aún no es bidireccional</span> porque el vecino no ve tu RID en su lista.`,
-    facts:[['Multicast','224.0.0.5'],['Protocolo','IP/89'],['RID R1','1.1.1.1'],['RID R2','2.2.2.2'],['RID R3','3.3.3.3']],
-    states:['INIT','INIT','INIT'],
-    nbrs:['R2 (visto)','R1,R3 (vistos)','R2 (visto)'],
-    dr:'?', bdr:'?',
-    pkts:[
-      {t:'hello',f:0,to:1,o:0},{t:'hello',f:1,to:0,o:0.5},
-      {t:'hello',f:1,to:2,o:0.25},{t:'hello',f:2,to:1,o:0.75}
-    ]
+    title:'Estado INIT — Primer Hello enviado',
+    desc:`Aquí comienza realmente el descubrimiento. R2 envía un paquete <span class="hl">Hello</span> hacia R1. El Hello incluye parámetros importantes como: <strong>Router ID</strong>, <strong>Area ID</strong>, máscara, timers Hello/Dead, prioridad y autenticación si existe. En INIT, un router ya recibió o envió Hello, pero <span class="hr">todavía no ve su propio Router ID</span> dentro de la lista de vecinos del otro.`,
+    facts:[['Paquete','Hello'],['Origen','R2'],['Destino','R1'],['Objetivo','Descubrir vecino']],
+    states:['DOWN','INIT'],
+    activePacket:{
+      type:'HELLO',
+      detail:'RID 2.2.2.2 · Area 0 · 10/40',
+      direction:'R2 → R1',
+      description:'R2 anuncia su presencia a R1 mediante Hello.',
+      color:'#3b82f6',
+      from:1,
+      to:0
+    }
   },
   {
     lbl:'2-WAY', icon:'🤝', bdgClass:'b2',
-    title:'Estado 2-WAY — ¡Comunicación bidireccional!',
-    desc:`R1 recibe un Hello de R2 que <span class="hg">contiene su propio RID 1.1.1.1</span> en la lista de vecinos. ¡R2 me ve! Esto confirma que la comunicación es <span class="hg">bidireccional</span>. Ahora se inicia la <span class="hy">elección de DR/BDR</span>: el router con mayor prioridad gana; en empate, mayor Router-ID. R1 (pri=100) → BDR, R2 tiene pri=50, R3 (pri=75). En broadcast, solo los DROthers forman adyacencia Full con el DR/BDR.`,
-    facts:[['DR','2.2.2.2 (R2 — pri 50 pero mayor RID)'],['BDR','1.1.1.1 (R1 — pri 100)'],['DROther','R3']],
-    states:['2-WAY','2-WAY','2-WAY'],
-    nbrs:['R2 ✓ bidi','R1 ✓ · R3 ✓','R2 ✓ bidi'],
-    dr:'2.2.2.2', bdr:'1.1.1.1',
-    pkts:[
-      {t:'hello',f:0,to:1,o:0.1},{t:'hello',f:1,to:0,o:0.55},
-      {t:'hello',f:1,to:2,o:0.3},{t:'hello',f:2,to:1,o:0.8}
-    ]
+    title:'Estado 2-WAY — Comunicación bidireccional confirmada',
+    desc:`R1 responde con un <span class="hl">Hello</span> que ya incluye a R2 en su lista de vecinos. Eso significa que R1 sí escuchó a R2 correctamente. Cuando R2 recibe este Hello y ve que el otro router ya lo reconoce, se alcanza el estado <span class="hg">2-WAY</span>. Este estado confirma que la comunicación ya es bidireccional. En redes broadcast aquí también ocurre la elección de DR/BDR, aunque entre solo dos routers lo importante es entender que ya hay reconocimiento mutuo.`,
+    facts:[['Estado','2-WAY'],['Confirmación','Mutua'],['Vecino','Reconocido'],['Significado','Bidireccional']],
+    states:['2-WAY','2-WAY'],
+    activePacket:{
+      type:'HELLO',
+      detail:'Neighbor = 2.2.2.2',
+      direction:'R1 → R2',
+      description:'R1 devuelve Hello reconociendo a R2 como vecino.',
+      color:'#3b82f6',
+      from:0,
+      to:1
+    }
   },
   {
     lbl:'EXSTART', icon:'🔑', bdgClass:'b3',
-    title:'Estado EXSTART — Negociación Master/Slave',
-    desc:`Routers que van a sincronizar intercambian <span class="hp">DBD vacíos</span> para negociar quién es <span class="hp">Master</span> y quién es <span class="hp">Slave</span>. La regla es simple: <span class="hy">mayor Router-ID = Master</span>. El Master inicia el intercambio y controla los números de secuencia DBD. El Slave solo puede responder. Este estado establece el orden del "baile" de sincronización que sigue.`,
-    facts:[['Master','Router con RID mayor'],['R1 vs R2','R2 es Master (2.2.2.2 > 1.1.1.1)'],['R2 vs R3','R2 es Master (2.2.2.2 < 3.3.3.3 → R3 Master)'],['DBD Seq','Negociado aleatoriamente']],
-    states:['EXSTART','EXSTART','EXSTART'],
-    nbrs:['R2 (negociando)','R1+R3 (negocia)','R2 (negociando)'],
-    dr:'2.2.2.2', bdr:'1.1.1.1',
-    pkts:[
-      {t:'dbd',f:0,to:1,o:0},{t:'dbd',f:1,to:0,o:0.5},
-      {t:'dbd',f:2,to:1,o:0.25},{t:'dbd',f:1,to:2,o:0.7}
-    ]
+    title:'Estado EXSTART — Se negocia el intercambio de base de datos',
+    desc:`En <span class="hp">EXSTART</span>, ambos routers se preparan para intercambiar información de su base de datos OSPF. Aquí se define quién será <strong>Master</strong> y quién será <strong>Slave</strong> para controlar el orden del intercambio. Normalmente, el router con mayor Router ID actúa como Master. También se negocia el número de secuencia inicial para los paquetes DBD.`,
+    facts:[['Paquete','DBD'],['Función','Negociación'],['Master/Slave','Sí'],['Seq','Inicial']],
+    states:['EXSTART','EXSTART'],
+    activePacket:{
+      type:'DBD',
+      detail:'Seq 0x3A1F · Master/Slave',
+      direction:'R2 → R1',
+      description:'R2 inicia la negociación de Database Description.',
+      color:'#f59e0b',
+      from:1,
+      to:0
+    }
   },
   {
     lbl:'EXCHANGE', icon:'📦', bdgClass:'b4',
-    title:'Estado EXCHANGE — Intercambio de cabeceras LSA',
-    desc:`Los routers intercambian <span class="hy">DBD (Database Description)</span> con los <strong>encabezados de todos sus LSAs</strong>: LS Type, Link State ID, Advertising Router, Sequence Number, Checksum, Age. El Master envía primero. El Slave responde con ACK implícito (su propio DBD). <span class="hl">Nadie envía LSAs completos aún</span>, solo los "títulos" de su biblioteca LSDB para que el vecino sepa qué le falta.`,
-    facts:[['LSA Type 1','Router LSA — cada router genera uno'],['LSA Type 2','Network LSA — el DR genera uno por segmento'],['LSDB','Link State Database (base de datos topológica)']],
-    states:['EXCHANGE','EXCHANGE','EXCHANGE'],
-    nbrs:['R2 (intercambiando)','R1+R3','R2 (intercambiando)'],
-    dr:'2.2.2.2', bdr:'1.1.1.1',
-    pkts:[
-      {t:'dbd',f:0,to:1,o:0.15},{t:'dbd',f:1,to:0,o:0.6},
-      {t:'dbd',f:2,to:1,o:0},{t:'dbd',f:1,to:2,o:0.45}
-    ]
+    title:'Estado EXCHANGE — Resumen de LSDB intercambiado',
+    desc:`En esta fase viajan los paquetes <span class="hy">DBD (Database Description)</span>. Aquí no se manda todavía toda la topología completa, sino un <strong>resumen</strong> o encabezados de los LSAs que cada router conoce en su LSDB. La idea es comparar bases de datos para detectar qué información falta en cada lado.`,
+    facts:[['Paquete','DBD'],['Contenido','Headers LSA'],['Objetivo','Comparar LSDB'],['Aún no','LSA completo']],
+    states:['EXCHANGE','EXCHANGE'],
+    activePacket:{
+      type:'DBD',
+      detail:'Headers de LSAs',
+      direction:'R1 → R2',
+      description:'R1 comparte a R2 el resumen de su base de datos OSPF.',
+      color:'#f59e0b',
+      from:0,
+      to:1
+    }
   },
   {
     lbl:'LOADING', icon:'⬇️', bdgClass:'b5',
-    title:'Estado LOADING — Descargando LSAs faltantes',
-    desc:`Cada router identifica los LSAs que le faltan y envía <span class="hp">LSR (Link State Request)</span> pidiendo esos LSAs específicos. El vecino responde con <span class="hg">LSU (Link State Update)</span> que contiene el LSA completo con toda la información de topología. El receptor confirma con <span class="hr">LSAck (Acknowledgment)</span>. Este proceso garantiza que la LSDB quede idéntica en todos los routers.`,
-    facts:[['LSR','Solicita LSAs específicos por (Type, ID, AdvRouter)'],['LSU','Contiene 1 o más LSAs completos'],['LSAck','ACK explícito o implícito (en DBD response)'],['Retransmit','Si no hay ACK → retransmite cada RxmtInterval (5s)']],
-    states:['LOADING','LOADING','LOADING'],
-    nbrs:['R2 (cargando)','R1+R3','R2 (cargando)'],
-    dr:'2.2.2.2', bdr:'1.1.1.1',
-    pkts:[
-      {t:'lsr',f:0,to:1,o:0.05},{t:'lsu',f:1,to:0,o:0.4},{t:'lsack',f:0,to:1,o:0.7},
-      {t:'lsr',f:2,to:1,o:0.2},{t:'lsu',f:1,to:2,o:0.55},{t:'lsack',f:2,to:1,o:0.85}
-    ]
+    title:'Estado LOADING — Se solicita la información faltante',
+    desc:`Después de comparar resúmenes, R2 detecta qué LSAs aún no tiene o cuáles necesita actualizar. Entonces envía un <span class="hp">LSR (Link State Request)</span> para pedir esa información específica. Este estado existe porque primero se comparan resúmenes y luego se solicitan solo los detalles faltantes, lo cual hace eficiente el proceso.`,
+    facts:[['Paquete','LSR'],['Función','Solicitar LSA'],['Origen','R2'],['Meta','Completar LSDB']],
+    states:['LOADING','LOADING'],
+    activePacket:{
+      type:'LSR',
+      detail:'Request Type 1 LSA',
+      direction:'R2 → R1',
+      description:'R2 solicita a R1 la información detallada que le falta.',
+      color:'#a78bfa',
+      from:1,
+      to:0
+    }
   },
   {
-    lbl:'FULL ✓', icon:'🚀', bdgClass:'b6',
-    title:'Estado FULL — ¡Adyacencia completa! SPF listo.',
-    desc:`Las LSDBs están <span class="hg">100% sincronizadas</span>. OSPF ejecuta el algoritmo <span class="hy">SPF de Dijkstra</span> para calcular el árbol de rutas más cortas basado en costos. Las rutas se instalan en la <strong>RIB/FIB</strong>. Se mantiene enviando Hellos cada 10s para keepalive. Si el Dead Timer (40s) expira sin recibir un Hello → la adyacencia cae a DOWN y SPF se recalcula. <span class="hg">¡Convergencia lograda!</span>`,
-    facts:[['Rutas instaladas','O 192.168.12.0/30, O 192.168.23.0/30'],['Costo','Ref BW 100Mbps / BW iface'],['SPF Delay','Configurable, evita flapping'],['Hello keepalive','Cada 10s → si no → DOWN en 40s']],
-    states:['FULL','FULL','FULL'],
-    nbrs:['R2 ✓ FULL','R1 ✓ · R3 ✓ FULL','R2 ✓ FULL'],
-    dr:'2.2.2.2', bdr:'1.1.1.1',
-    pkts:[
-      {t:'hello',f:0,to:1,o:0.2},{t:'hello',f:1,to:0,o:0.7},
-      {t:'hello',f:1,to:2,o:0.45},{t:'hello',f:2,to:1,o:0.9}
-    ]
+    lbl:'FULL', icon:'🚀', bdgClass:'b6',
+    title:'Estado FULL — Vecindad completa y base sincronizada',
+    desc:`Finalmente, R1 responde con un <span class="hg">LSU (Link State Update)</span> que contiene el LSA completo solicitado. Una vez que ambos routers tienen la misma información topológica, la vecindad llega a <span class="hg">FULL</span>. En este momento la <strong>LSDB está sincronizada</strong> y OSPF puede ejecutar el algoritmo SPF para calcular rutas e instalarlas en la tabla de enrutamiento.`,
+    facts:[['Paquete','LSU'],['Resultado','LSDB sincronizada'],['Estado','FULL'],['Acción','Corre SPF']],
+    states:['FULL','FULL'],
+    activePacket:{
+      type:'LSU',
+      detail:'LSA completo',
+      direction:'R1 → R2',
+      description:'R1 entrega la información final y la vecindad queda FULL.',
+      color:'#34d399',
+      from:0,
+      to:1
+    }
   }
 ];
 
-const PKT_COL = {hello:'#3b82f6',dbd:'#f59e0b',lsr:'#a78bfa',lsu:'#34d399',lsack:'#f87171'};
-const STAGE_DUR = 4200; // ms per stage
+let stage = 0;
+let playing = false;
+let animT = 0;
+let lastTs = null;
+let raf = null;
+let autoTimer = null;
+let spd = 0.6;
+const STAGE_DUR = 7500;
 
-let stage = 0, playing = false, animT = 0, lastTs = null, raf = null, autoTimer = null, spd = 1;
-
-// ─── Canvas setup ─────────────────────────────────────────────────────────────
 const cv = document.getElementById('c');
 const cx = cv.getContext('2d');
+
 function resizeCv(){
   cv.width = cv.parentElement.clientWidth;
-  cv.height = Math.round(cv.width * 240/900);
+  cv.height = Math.round(cv.width * 310 / 980);
 }
 resizeCv();
 window.addEventListener('resize',()=>{resizeCv();draw();});
 
 function rpos(i){
-  const w=cv.width,h=cv.height;
-  return [{x:w*.15,y:h*.5},{x:w*.5,y:h*.5},{x:w*.85,y:h*.5}][i];
+  const w = cv.width, h = cv.height;
+  return [
+    {x:w*0.24, y:h*0.58},
+    {x:w*0.76, y:h*0.58}
+  ][i];
+}
+
+function roundedRect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  if(fill) ctx.fill();
+  if(stroke) ctx.stroke();
+}
+
+function drawEnvelopePacket(pkt, x, y){
+  const col = pkt.color;
+  const mainText = pkt.type;
+  const detail = pkt.detail;
+  const direction = pkt.direction;
+
+  cx.font = 'bold 12px JetBrains Mono, monospace';
+  const w1 = cx.measureText(mainText).width;
+  cx.font = '10px JetBrains Mono, monospace';
+  const w2 = cx.measureText(detail).width;
+  const w3 = cx.measureText(direction).width;
+
+  const boxW = Math.max(82, w1 + 28);
+  const boxH = 30;
+
+  cx.save();
+  cx.shadowColor = col;
+  cx.shadowBlur = 16;
+  cx.fillStyle = col + '22';
+  roundedRect(cx, x - boxW/2, y - boxH/2, boxW, boxH, 6, true, false);
+  cx.restore();
+
+  const topW = w2 + 14;
+  cx.fillStyle = '#020617';
+  cx.strokeStyle = '#334155';
+  cx.lineWidth = 1;
+  roundedRect(cx, x - topW/2, y - 38, topW, 18, 5, true, true);
+  cx.fillStyle = '#cbd5e1';
+  cx.font = '10px JetBrains Mono, monospace';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(detail, x, y - 29);
+
+  cx.fillStyle = '#0b1220';
+  cx.strokeStyle = col;
+  cx.lineWidth = 1.8;
+  roundedRect(cx, x - boxW/2, y - boxH/2, boxW, boxH, 6, true, true);
+
+  cx.beginPath();
+  cx.moveTo(x - boxW/2 + 7, y - boxH/2 + 5);
+  cx.lineTo(x, y + 3);
+  cx.lineTo(x + boxW/2 - 7, y - boxH/2 + 5);
+  cx.strokeStyle = col;
+  cx.lineWidth = 1.2;
+  cx.stroke();
+
+  cx.beginPath();
+  cx.moveTo(x - boxW/2 + 7, y + boxH/2 - 6);
+  cx.lineTo(x, y + 3);
+  cx.lineTo(x + boxW/2 - 7, y + boxH/2 - 6);
+  cx.stroke();
+
+  cx.fillStyle = '#e2e8f0';
+  cx.font = 'bold 12px JetBrains Mono, monospace';
+  cx.fillText(mainText, x, y + 1);
+
+  const botW = w3 + 14;
+  cx.fillStyle = '#020617';
+  cx.strokeStyle = '#1e293b';
+  roundedRect(cx, x - botW/2, y + 24, botW, 18, 5, true, true);
+  cx.fillStyle = col;
+  cx.font = '10px JetBrains Mono, monospace';
+  cx.fillText(direction, x, y + 33);
+}
+
+function drawRouter(x,y,radius,r,isCenter,state){
+  const isFull = state === 'FULL';
+  const glowCol = isCenter ? '#f87171' : r.col;
+
+  if(isCenter){
+    cx.beginPath();
+    cx.arc(x,y,radius+12,0,2*Math.PI);
+    cx.fillStyle = '#f8717120';
+    cx.fill();
+  } else if(isFull){
+    cx.beginPath();
+    cx.arc(x,y,radius+8,0,2*Math.PI);
+    cx.fillStyle = r.col + '22';
+    cx.fill();
+  }
+
+  cx.beginPath();
+  cx.arc(x,y,radius+3,0,2*Math.PI);
+  cx.strokeStyle = glowCol;
+  cx.lineWidth = isCenter ? 2.6 : 1.2;
+  cx.stroke();
+
+  cx.beginPath();
+  cx.arc(x,y,radius,0,2*Math.PI);
+  cx.fillStyle = isCenter ? '#2a0f14' : (isFull ? r.bg : '#0f172a');
+  cx.fill();
+  cx.strokeStyle = glowCol;
+  cx.lineWidth = 1.7;
+  cx.stroke();
+
+  cx.strokeStyle = '#e2e8f0';
+  cx.lineWidth = 1.2;
+  cx.beginPath();
+  cx.moveTo(x-radius*.50, y-radius*.08);
+  cx.lineTo(x+radius*.50, y-radius*.08);
+  cx.stroke();
+
+  cx.beginPath();
+  cx.moveTo(x-radius*.28, y+radius*.18);
+  cx.lineTo(x+radius*.28, y+radius*.18);
+  cx.stroke();
+
+  cx.beginPath();
+  cx.moveTo(x-radius*.23, y-radius*.08);
+  cx.lineTo(x-radius*.14, y+radius*.18);
+  cx.stroke();
+
+  cx.beginPath();
+  cx.moveTo(x+radius*.23, y-radius*.08);
+  cx.lineTo(x+radius*.14, y+radius*.18);
+  cx.stroke();
+
+  cx.fillStyle = isCenter ? '#fca5a5' : r.col;
+  cx.font = `bold ${Math.round(cv.width*.018)}px Inter,sans-serif`;
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(r.id, x, y-radius*.82);
+
+  cx.fillStyle = isCenter ? '#fecaca' : '#94a3b8';
+  cx.font = `${Math.round(cv.width*.011)}px JetBrains Mono,monospace`;
+  cx.fillText(r.rid, x, y+radius+14);
+
+  const scol = {
+    DOWN:'#475569',
+    INIT:'#fb923c',
+    '2-WAY':'#34d399',
+    EXSTART:'#818cf8',
+    EXCHANGE:'#a78bfa',
+    LOADING:'#fbbf24',
+    FULL:'#4ade80'
+  }[state] || '#64748b';
+
+  cx.fillStyle = scol;
+  cx.font = `bold ${Math.round(cv.width*.012)}px Inter,sans-serif`;
+  cx.fillText(state, x, y+radius+30);
+
+  cx.fillStyle = isCenter ? '#fda4af' : '#60a5fa';
+  cx.font = `${Math.round(cv.width*.010)}px JetBrains Mono,monospace`;
+  cx.fillText(r.ip, x, y-radius-12);
+}
+
+function drawLinks(){
+  const st = STAGES[stage];
+  const p1 = rpos(0);
+  const p2 = rpos(1);
+
+  cx.beginPath();
+  cx.moveTo(p1.x,p1.y);
+  cx.lineTo(p2.x,p2.y);
+  cx.strokeStyle = '#1e3a5f';
+  cx.lineWidth = 2;
+  cx.setLineDash([8,5]);
+  cx.stroke();
+  cx.setLineDash([]);
+
+  const mx = (p1.x+p2.x)/2;
+  const my = (p1.y+p2.y)/2 + 14;
+
+  cx.font = '10px JetBrains Mono, monospace';
+  const net = '192.168.12.0/30';
+  const tw = cx.measureText(net).width + 12;
+  cx.fillStyle = '#0f172a';
+  cx.strokeStyle = '#1e293b';
+  roundedRect(cx, mx-tw/2, my-9, tw, 18, 4, true, true);
+  cx.fillStyle = '#94a3b8';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(net, mx, my);
+
+  const pkt = st.activePacket;
+  if(pkt){
+    const a = rpos(pkt.from);
+    const b = rpos(pkt.to);
+    cx.beginPath();
+    cx.moveTo(a.x,a.y);
+    cx.lineTo(b.x,b.y);
+    cx.strokeStyle = pkt.color;
+    cx.lineWidth = 3;
+    cx.stroke();
+  }
+}
+
+function drawBackground(){
+  const w = cv.width;
+  const h = cv.height;
+  cx.clearRect(0,0,w,h);
+
+  cx.strokeStyle='#0f172a';
+  cx.lineWidth=1;
+  for(let x=0;x<w;x+=40){
+    cx.beginPath();
+    cx.moveTo(x,0);
+    cx.lineTo(x,h);
+    cx.stroke();
+  }
+  for(let y=0;y<h;y+=40){
+    cx.beginPath();
+    cx.moveTo(0,y);
+    cx.lineTo(w,y);
+    cx.stroke();
+  }
+}
+
+function drawActivePacket(){
+  const st = STAGES[stage];
+  const pkt = st.activePacket;
+  if(!pkt) return;
+
+  const pa = rpos(pkt.from);
+  const pb = rpos(pkt.to);
+
+  let p = ((animT * 0.00008 * spd) % 1);
+  const x = pa.x + (pb.x - pa.x) * p;
+  const y = pa.y + (pb.y - pa.y) * p - Math.sin(p * Math.PI) * 22;
+
+  drawEnvelopePacket(pkt, x, y);
 }
 
 function draw(){
-  const w=cv.width,h=cv.height;
-  cx.clearRect(0,0,w,h);
+  drawBackground();
+  drawLinks();
+
   const st = STAGES[stage];
 
-  // Grid lines subtle
-  cx.strokeStyle='#0f172a';cx.lineWidth=1;
-  for(let x=0;x<w;x+=40){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,h);cx.stroke();}
-  for(let y=0;y<h;y+=40){cx.beginPath();cx.moveTo(0,y);cx.lineTo(w,y);cx.stroke();}
-
-  // Links
-  [[0,1,'192.168.12.0/30'],[1,2,'192.168.23.0/30']].forEach(([a,b,net])=>{
-    const pa=rpos(a),pb=rpos(b);
-    const isFull = st.states[a]==='FULL'&&st.states[b]==='FULL';
-    cx.beginPath();cx.moveTo(pa.x,pa.y);cx.lineTo(pb.x,pb.y);
-    cx.strokeStyle=isFull?'#16a34a':'#1e3a5f';cx.lineWidth=isFull?2:1.5;
-    if(!isFull){cx.setLineDash([6,4]);}else{cx.setLineDash([]);}
-    cx.stroke();cx.setLineDash([]);
-    // net label
-    const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2;
-    cx.fillStyle='#0f172a';
-    const tw=cx.measureText(net).width+10;
-    cx.fillRect(mx-tw/2,my-9,tw,18);
-    cx.fillStyle='#475569';cx.font='10px JetBrains Mono,monospace';
-    cx.textAlign='center';cx.textBaseline='middle';
-    cx.fillText(net,mx,my);
-  });
-
-  // Packets
-  st.pkts.forEach(pkt=>{
-    const pa=rpos(pkt.f),pb=rpos(pkt.to);
-    let p=((pkt.o + animT*0.00055*spd)%1);
-    const x=pa.x+(pb.x-pa.x)*p;
-    const arc=Math.sin(p*Math.PI)*-h*0.22;
-    const y=pa.y+arc;
-    const col=PKT_COL[pkt.t]||'#888';
-    // Glow
-    cx.beginPath();cx.arc(x,y,11,0,2*Math.PI);
-    cx.fillStyle=col+'22';cx.fill();
-    // Packet
-    cx.beginPath();cx.arc(x,y,7,0,2*Math.PI);
-    cx.fillStyle=col;cx.fill();
-    // Label
-    cx.fillStyle='#000';cx.font='bold 6px JetBrains Mono,monospace';
-    cx.textAlign='center';cx.textBaseline='middle';
-    const lbl={hello:'HLO',dbd:'DBD',lsr:'LSR',lsu:'LSU',lsack:'ACK'}[pkt.t]||'PKT';
-    cx.fillText(lbl,x,y);
-  });
-
-  // Routers
   R.forEach((r,i)=>{
-    const p=rpos(i);
-    const rState=st.states[i];
-    const isFull=rState==='FULL';
-    const radius=cv.width*0.045;
-
-    // Outer glow for FULL
-    if(isFull){
-      cx.beginPath();cx.arc(p.x,p.y,radius+8,0,2*Math.PI);
-      cx.fillStyle=r.col+'22';cx.fill();
-    }
-    // Ring
-    cx.beginPath();cx.arc(p.x,p.y,radius+3,0,2*Math.PI);
-    cx.strokeStyle=r.col+(isFull?'':'55');cx.lineWidth=isFull?2.5:1;cx.stroke();
-    // Body
-    cx.beginPath();cx.arc(p.x,p.y,radius,0,2*Math.PI);
-    cx.fillStyle=isFull?r.bg:'#0f172a';cx.fill();
-    cx.strokeStyle=r.col;cx.lineWidth=1.5;cx.stroke();
-    // Router ID text
-    cx.fillStyle=isFull?'#fff':r.col;
-    cx.font=`bold ${Math.round(cv.width*.016)}px Inter,sans-serif`;
-    cx.textAlign='center';cx.textBaseline='middle';
-    cx.fillText(r.id,p.x,p.y-radius*.28);
-    cx.font=`${Math.round(cv.width*.011)}px JetBrains Mono,monospace`;
-    cx.fillStyle=isFull?'#d1fae5':'#64748b';
-    cx.fillText(r.rid,p.x,p.y+radius*.22);
-    // State below router
-    cx.font=`bold ${Math.round(cv.width*.012)}px Inter,sans-serif`;
-    const scol={DOWN:'#475569',INIT:'#fb923c','2-WAY':'#34d399',EXSTART:'#818cf8',EXCHANGE:'#a78bfa',LOADING:'#fbbf24',FULL:'#4ade80'}[rState]||'#64748b';
-    cx.fillStyle=scol;
-    cx.fillText(rState,p.x,p.y+radius+14);
-    // IP above
-    cx.fillStyle='#1e3a5f';cx.font=`${Math.round(cv.width*.01)}px JetBrains Mono,monospace`;
-    const ipLabel=i===0?r.ip12:i===2?r.ip23:`${r.ip12} | ${r.ip23}`;
-    cx.fillText(ipLabel,p.x,p.y-radius-10);
+    const p = rpos(i);
+    const radius = cv.width * 0.058;
+    drawRouter(p.x,p.y,radius,r,i===1,st.states[i]);
   });
+
+  drawActivePacket();
 }
 
-// ─── RAF Loop ─────────────────────────────────────────────────────────────────
 function loop(ts){
-  if(!playing)return;
-  if(!lastTs)lastTs=ts;
-  animT+=(ts-lastTs);lastTs=ts;
+  if(!playing) return;
+  if(!lastTs) lastTs = ts;
+  animT += (ts - lastTs);
+  lastTs = ts;
   draw();
-  raf=requestAnimationFrame(loop);
+  raf = requestAnimationFrame(loop);
 }
 
-// ─── UI Builders ──────────────────────────────────────────────────────────────
 function buildStagesBar(){
-  const bar=document.getElementById('stages-bar');
-  bar.innerHTML='';
+  const bar = document.getElementById('stages-bar');
+  bar.innerHTML = '';
   STAGES.forEach((s,i)=>{
-    const d=document.createElement('div');
-    d.className='stage-step'+(i===stage?' active':i<stage?' done':'');
-    d.innerHTML=`<span class="s-num">${s.icon}</span>${s.lbl}`;
-    d.onclick=()=>{gotoStage(i);};
+    const d = document.createElement('div');
+    d.className = 'stage-step' + (i===stage ? ' active' : i<stage ? ' done' : '');
+    d.innerHTML = `<span class="s-num">${s.icon}</span>${s.lbl}`;
+    d.onclick = ()=>gotoStage(i);
     bar.appendChild(d);
   });
 }
 
 function buildPanels(){
-  const el=document.getElementById('r-panels');
-  const st=STAGES[stage];
-  el.innerHTML=R.map((r,i)=>`
-    <div class="r-panel ${st.states[i]==='FULL'?'active-r':''}">
+  const el = document.getElementById('r-panels');
+  const st = STAGES[stage];
+  el.innerHTML = R.map((r,i)=>`
+    <div class="r-panel ${i===1?'active-r':''}">
       <div class="rp-hdr">
         <div class="rp-circle" style="background:${r.bg};color:${r.col};border:1.5px solid ${r.col}">${r.id}</div>
-        <div class="rp-info"><h4>${r.rid}</h4><p>${r.id==='R2'?'Area Border?':'Area 0 Internal'}</p></div>
+        <div class="rp-info">
+          <h4>${r.rid}</h4>
+          <p>${i===1?'Router central de la explicación':'Vecino OSPF'}</p>
+        </div>
       </div>
       <div><span class="rp-state st-${st.states[i].replace('-','').replace(' ','')}">${st.states[i]}</span></div>
       <div class="rp-fields">
-        <div class="rp-field"><span>IP Iface</span><span class="fv">${i===0?r.ip12+'/30':i===2?r.ip23+'/30':r.ip12+'/30'}</span></div>
-        ${i===1?`<div class="rp-field"><span>IP 2da</span><span class="fv">${r.ip23}/30</span></div>`:''}
+        <div class="rp-field"><span>IP</span><span class="fv">${r.ip}</span></div>
         <div class="rp-field"><span>Prioridad</span><span class="fv">${r.pri}</span></div>
-        <div class="rp-field"><span>Vecinos</span><span class="fv" style="font-size:9px">${st.nbrs[i]}</span></div>
-        ${i===1?`<div class="rp-field"><span>DR/BDR</span><span class="fv" style="font-size:9px">${st.dr}/${st.bdr}</span></div>`:''}
+        <div class="rp-field"><span>Router ID</span><span class="fv">${r.rid}</span></div>
         <div class="rp-field"><span>Hello/Dead</span><span class="fv">10s / 40s</span></div>
       </div>
     </div>
@@ -416,108 +861,159 @@ function buildPanels(){
 }
 
 function buildInfo(){
-  const st=STAGES[stage];
-  const card=document.getElementById('info-card');
-  card.className='info-card phase-'+stage;
-  document.getElementById('info-badge').className='info-badge '+st.bdgClass;
-  document.getElementById('info-badge').textContent='ESTADO '+stage+' — '+st.lbl;
-  document.getElementById('info-title').textContent=st.title;
-  document.getElementById('info-desc').innerHTML=st.desc;
-  document.getElementById('facts-row').innerHTML=st.facts.map(([k,v])=>
+  const st = STAGES[stage];
+  const card = document.getElementById('info-card');
+  card.className = 'info-card phase-' + stage;
+
+  document.getElementById('info-badge').className = 'info-badge ' + st.bdgClass;
+  document.getElementById('info-badge').textContent = 'ESTADO ' + stage + ' — ' + st.lbl;
+  document.getElementById('info-title').textContent = st.title;
+  document.getElementById('info-desc').innerHTML = st.desc;
+  document.getElementById('facts-row').innerHTML = st.facts.map(([k,v]) =>
     `<div class="fact-chip"><span>${k}:</span>${v}</div>`
   ).join('');
-  document.getElementById('prog-fill').style.width=((stage/(STAGES.length-1))*100)+'%';
+
+  document.getElementById('prog-fill').style.width = ((stage/(STAGES.length-1))*100) + '%';
+
+  const ex = st.activePacket;
+  if(ex){
+    document.getElementById('ex-badge').textContent = ex.type;
+    document.getElementById('ex-main').textContent = ex.description;
+    document.getElementById('ex-sub').innerHTML = `Paquete activo: <strong>${ex.type}</strong>. Detalle: <strong>${ex.detail}</strong>. Este intercambio representa la función principal de este estado.`;
+    document.getElementById('ex-dir').textContent = ex.direction;
+  } else {
+    document.getElementById('ex-badge').textContent = 'SIN TRÁFICO';
+    document.getElementById('ex-main').textContent = 'Esperando iniciar simulación';
+    document.getElementById('ex-sub').textContent = 'Aquí se mostrará el paquete que está viajando y qué función cumple dentro del establecimiento de vecindad OSPF.';
+    document.getElementById('ex-dir').textContent = '—';
+  }
 }
 
-// ─── Log ──────────────────────────────────────────────────────────────────────
-let logTime=0;
-const LOG_MSGS=[
-  ()=>`<span class="lm">Proceso OSPF iniciado. Interfaces en estado <span class="lr">DOWN</span>.</span>`,
-  ()=>`<span class="lm">R1 envía <span class="lh">Hello</span> → 224.0.0.5 (Gi0/0). R3 envía <span class="lh">Hello</span> → 224.0.0.5 (Gi0/1).</span>`,
-  ()=>`<span class="lm">R1 ve su RID en Hello de R2. Estado <span class="lg">2-WAY</span>. Iniciando elección DR/BDR.</span>`,
-  ()=>`<span class="lm">R1↔R2 negocian Master/Slave. DBD seq=<span class="ly">0x3A1F</span>. R2 es Master (RID mayor).</span>`,
-  ()=>`<span class="lm">Intercambiando LSA headers en DBD. R1 necesita <span class="ly">2 LSAs</span>. R2 necesita <span class="ly">1 LSA</span>.</span>`,
-  ()=>`<span class="lm">R1 envía <span class="lp">LSR</span> → R2. R2 responde con <span class="lg">LSU</span> (2 LSAs). R1 confirma con <span class="lr">LSAck</span>.</span>`,
-  ()=>`<span class="lm">LSDB sincronizada. SPF ejecutado. <span class="lg">Rutas instaladas en RIB. ¡FULL!</span></span>`,
+let logTime = 0;
+const LOG_MSGS = [
+  ()=>`<span class="lm">Ambos routers están en <span class="lr">DOWN</span>. No existe vecindad todavía.</span>`,
+  ()=>`<span class="lm">R2 envía <span class="lh">HELLO</span> a R1 para iniciar descubrimiento.</span>`,
+  ()=>`<span class="lm">R1 responde con <span class="lh">HELLO</span> y se alcanza <span class="lg">2-WAY</span>.</span>`,
+  ()=>`<span class="lm">Se inicia negociación <span class="lp">EXSTART</span> usando <span class="ly">DBD</span>.</span>`,
+  ()=>`<span class="lm">En <span class="ly">EXCHANGE</span> se comparan resúmenes de LSDB.</span>`,
+  ()=>`<span class="lm">R2 usa <span class="lp">LSR</span> para pedir lo que falta.</span>`,
+  ()=>`<span class="lm">R1 responde con <span class="lg">LSU</span>. La relación queda <span class="lg">FULL</span>.</span>`
 ];
 
 function addLog(){
-  logTime+=Math.round(2+Math.random()*4);
-  const log=document.getElementById('log');
-  const d=document.createElement('div');
-  d.className='log-line';
-  d.innerHTML=`<span class="lt">T+${logTime}s</span>${(LOG_MSGS[stage]||LOG_MSGS[0])()}`;
+  logTime += Math.round(3 + Math.random()*4);
+  const log = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = 'log-line';
+  d.innerHTML = `<span class="lt">T+${logTime}s</span>${(LOG_MSGS[stage]||LOG_MSGS[0])()}`;
   log.appendChild(d);
-  log.scrollTop=log.scrollHeight;
+  log.scrollTop = log.scrollHeight;
 }
 
-// ─── Control ──────────────────────────────────────────────────────────────────
 function gotoStage(s){
-  stage=Math.max(0,Math.min(s,STAGES.length-1));
-  animT=0;lastTs=null;
-  buildStagesBar();buildPanels();buildInfo();draw();
+  stage = Math.max(0, Math.min(s, STAGES.length-1));
+  animT = 0;
+  lastTs = null;
+  buildStagesBar();
+  buildPanels();
+  buildInfo();
+  draw();
 }
 
 function schedNext(){
   clearTimeout(autoTimer);
-  if(!playing||stage>=STAGES.length-1)return;
-  autoTimer=setTimeout(()=>{
-    if(!playing)return;
-    stage++;animT=0;lastTs=null;
-    buildStagesBar();buildPanels();buildInfo();addLog();
-    if(stage<STAGES.length-1)schedNext();
-    else{playing=false;cancelAnimationFrame(raf);updatePlayBtn();}
-  },STAGE_DUR/spd);
+  if(!playing || stage >= STAGES.length-1) return;
+
+  autoTimer = setTimeout(()=>{
+    if(!playing) return;
+    stage++;
+    animT = 0;
+    lastTs = null;
+    buildStagesBar();
+    buildPanels();
+    buildInfo();
+    addLog();
+    if(stage < STAGES.length-1){
+      schedNext();
+    } else {
+      playing = false;
+      cancelAnimationFrame(raf);
+      updatePlayBtn();
+    }
+  }, STAGE_DUR / spd);
 }
 
 function togglePlay(){
   if(playing){
-    playing=false;cancelAnimationFrame(raf);clearTimeout(autoTimer);
+    playing = false;
+    cancelAnimationFrame(raf);
+    clearTimeout(autoTimer);
   } else {
-    if(stage>=STAGES.length-1)doReset();
-    playing=true;lastTs=null;requestAnimationFrame(loop);schedNext();
-    if(document.getElementById('log').children.length===0)addLog();
+    if(stage >= STAGES.length-1) doReset();
+    playing = true;
+    lastTs = null;
+    requestAnimationFrame(loop);
+    schedNext();
+    if(document.getElementById('log').children.length===0) addLog();
   }
   updatePlayBtn();
 }
 
 function updatePlayBtn(){
-  const b=document.getElementById('btn-play');
-  b.textContent=playing?'⏸ Pausar':'▶ '+( stage===0?'Iniciar':'Reanudar');
-  b.className='btn-main '+(playing?'btn-pause':'btn-play');
+  const b = document.getElementById('btn-play');
+  b.textContent = playing ? '⏸ Pausar' : '▶ ' + (stage===0 ? 'Iniciar' : 'Reanudar');
+  b.className = 'btn-main ' + (playing ? 'btn-pause' : 'btn-play');
 }
 
 function doReset(){
-  playing=false;cancelAnimationFrame(raf);clearTimeout(autoTimer);
-  stage=0;animT=0;logTime=0;
-  document.getElementById('log').innerHTML='';
-  buildStagesBar();buildPanels();buildInfo();draw();updatePlayBtn();
+  playing = false;
+  cancelAnimationFrame(raf);
+  clearTimeout(autoTimer);
+  stage = 0;
+  animT = 0;
+  logTime = 0;
+  lastTs = null;
+  document.getElementById('log').innerHTML = '';
+  buildStagesBar();
+  buildPanels();
+  buildInfo();
+  draw();
+  updatePlayBtn();
 }
 
 function doStep(){
-  if(playing){playing=false;cancelAnimationFrame(raf);clearTimeout(autoTimer);updatePlayBtn();}
-  if(stage<STAGES.length-1){stage++;animT=0;lastTs=null;buildStagesBar();buildPanels();buildInfo();addLog();draw();}
+  if(playing){
+    playing = false;
+    cancelAnimationFrame(raf);
+    clearTimeout(autoTimer);
+    updatePlayBtn();
+  }
+  if(stage < STAGES.length-1){
+    stage++;
+    animT = 0;
+    lastTs = null;
+    buildStagesBar();
+    buildPanels();
+    buildInfo();
+    addLog();
+    draw();
+  }
 }
 
 function setSpeed(v){
-  spd=parseFloat(v);
-  document.getElementById('spd-lbl').textContent=v+'×';
-  if(playing){clearTimeout(autoTimer);schedNext();}
+  spd = parseFloat(v);
+  document.getElementById('spd-lbl').textContent = v + '×';
+  if(playing){
+    clearTimeout(autoTimer);
+    schedNext();
+  }
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-buildStagesBar();buildPanels();buildInfo();draw();
-
-// Idle animation (paquetes flotando suaves)
-let idleRaf;
-function idleLoop(ts){
-  if(playing){cancelAnimationFrame(idleRaf);return;}
-  if(!lastTs)lastTs=ts;
-  animT+=(ts-lastTs)*.4;lastTs=ts;
-  draw();
-  idleRaf=requestAnimationFrame(idleLoop);
-}
-idleRaf=requestAnimationFrame(idleLoop);
+buildStagesBar();
+buildPanels();
+buildInfo();
+draw();
+updatePlayBtn();
 </script>
 </body>
 </html>
