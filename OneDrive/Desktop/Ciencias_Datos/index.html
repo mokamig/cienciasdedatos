@@ -1,1019 +1,1115 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OSPF entre 2 routers - Packet Tracer Style</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador OLAP: Row-based vs Columnar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red: #f43f5e;
+      --emerald: #10b981;
+      --blue: #3b82f6;
+      --cyan: #06b6d4;
+      --bg: #050a14;
+      --surface: rgba(10,18,35,0.85);
+      --border: rgba(148,163,184,0.10);
+      --glow-red: rgba(244,63,94,0.18);
+      --glow-green: rgba(16,185,129,0.18);
+    }
 
-*{box-sizing:border-box;margin:0;padding:0}
+    * { box-sizing: border-box; }
 
-body{
-  background:#0a0e1a;
-  color:#e2e8f0;
-  font-family:'Inter',sans-serif;
-  min-height:100vh;
-  overflow-x:hidden;
-}
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-#app{
-  max-width:980px;
-  margin:0 auto;
-  padding:16px;
-}
+    /* ── Animated background mesh ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% 0%, rgba(59,130,246,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 90% 10%, rgba(16,185,129,0.10) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 60% at 50% 100%, rgba(244,63,94,0.07) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
 
-/* HEADER */
-.hdr{
-  text-align:center;
-  margin-bottom:14px;
-}
-.hdr-title{
-  font-size:24px;
-  font-weight:700;
-  color:#60a5fa;
-  letter-spacing:.04em;
-  margin-bottom:5px;
-}
-.hdr-sub{
-  font-size:13px;
-  color:#64748b;
-}
+    /* ── Floating particles canvas ── */
+    #particles-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+    }
 
-/* TOP CONTROLS */
-.top-controls{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:14px;
-}
+    .content-wrap {
+      position: relative;
+      z-index: 1;
+    }
 
-.btn-main{
-  padding:11px 26px;
-  border-radius:8px;
-  border:none;
-  cursor:pointer;
-  font-size:14px;
-  font-weight:700;
-  font-family:'Inter',sans-serif;
-  transition:all .2s;
-  letter-spacing:.02em;
-}
+    /* ── Glass card ── */
+    .glass {
+      background: var(--surface);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
 
-.btn-play{background:#1d4ed8;color:#fff}
-.btn-play:hover{background:#2563eb}
-.btn-pause{background:#334155;color:#e2e8f0}
-.btn-pause:hover{background:#475569}
-.btn-reset{background:#0f172a;color:#cbd5e1;border:1px solid #1e293b}
-.btn-reset:hover{border-color:#334155}
-.btn-step{background:#0f172a;color:#cbd5e1;border:1px solid #1e293b}
-.btn-step:hover{border-color:#334155}
+    /* ── Neon glow utilities ── */
+    .glow-red  { box-shadow: 0 0 24px rgba(244,63,94,0.35), 0 0 60px rgba(244,63,94,0.12); }
+    .glow-green{ box-shadow: 0 0 24px rgba(16,185,129,0.35), 0 0 60px rgba(16,185,129,0.12); }
+    .glow-blue { box-shadow: 0 0 24px rgba(59,130,246,0.35), 0 0 60px rgba(59,130,246,0.12); }
 
-.speed-ctl{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  color:#64748b;
-}
-.speed-ctl input{
-  accent-color:#3b82f6;
-  width:100px;
-}
+    /* ── Header badge ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 0.05em;
+      border: 1px solid rgba(148,163,184,0.22);
+      background: rgba(30,41,59,0.6);
+      color: #94a3b8;
+    }
 
-/* STAGES */
-.stages-bar{
-  display:flex;
-  gap:0;
-  margin-bottom:16px;
-  border-radius:10px;
-  overflow:hidden;
-  border:1px solid #1e293b;
-}
-.stage-step{
-  flex:1;
-  text-align:center;
-  padding:8px 4px;
-  font-size:11px;
-  font-weight:600;
-  cursor:pointer;
-  transition:all .3s;
-  background:#0f172a;
-  color:#475569;
-  border-right:1px solid #1e293b;
-  letter-spacing:.03em;
-}
-.stage-step:last-child{border-right:none}
-.stage-step.active{background:#1e40af;color:#fff}
-.stage-step.done{background:#14532d;color:#86efac}
-.stage-step .s-num{
-  display:block;
-  font-size:16px;
-  margin-bottom:2px;
-}
+    /* ── SQL box with animated cursor ── */
+    .sql-box {
+      background: #020617;
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .sql-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(59,130,246,0.06), transparent);
+      animation: shimmerSQL 3s infinite;
+    }
+    @keyframes shimmerSQL {
+      0%   { left: -60%; }
+      100% { left: 120%; }
+    }
 
-.progress-bar{
-  height:4px;
-  background:#1e293b;
-  border-radius:3px;
-  overflow:hidden;
-  margin-bottom:16px;
-}
-.progress-fill{
-  height:100%;
-  background:linear-gradient(90deg,#1d4ed8,#7c3aed);
-  transition:width .3s;
-  border-radius:3px;
-}
+    /* ── Scan area ── */
+    .scan-area {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1rem;
+      background: linear-gradient(180deg, rgba(10,18,35,0.97), rgba(2,6,23,0.97));
+      border: 1px solid rgba(148,163,184,0.10);
+      min-height: 265px;
+    }
 
-/* CURRENT EXCHANGE */
-.exchange-card{
-  background:#0b1220;
-  border:1px solid #1e293b;
-  border-radius:12px;
-  padding:14px 16px;
-  margin-bottom:16px;
-}
-.exchange-top{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:8px;
-}
-.ex-badge{
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.08em;
-  padding:4px 10px;
-  border-radius:6px;
-  background:#1e293b;
-  color:#cbd5e1;
-}
-.ex-main{
-  font-size:16px;
-  font-weight:700;
-  color:#f8fafc;
-}
-.ex-sub{
-  font-size:13px;
-  color:#94a3b8;
-  line-height:1.7;
-}
-.ex-sub strong{color:#e2e8f0}
-.ex-dir{
-  margin-top:10px;
-  display:inline-block;
-  background:#111827;
-  border:1px solid #334155;
-  color:#60a5fa;
-  border-radius:6px;
-  padding:6px 10px;
-  font-family:'JetBrains Mono',monospace;
-  font-size:12px;
-}
+    /* ── Scan beam ── */
+    .scan-line {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      pointer-events: none;
+      z-index: 2;
+      transition: width 0.05s linear;
+    }
+    .scan-line-row {
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(244,63,94,0.05),
+        rgba(244,63,94,0.25),
+        rgba(244,63,94,0.05),
+        transparent);
+    }
+    .scan-line-col {
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(16,185,129,0.05),
+        rgba(16,185,129,0.25),
+        rgba(16,185,129,0.05),
+        transparent);
+    }
 
-/* CANVAS */
-.canvas-section{
-  position:relative;
-  margin-bottom:16px;
-}
-canvas#c{
-  display:block;
-  width:100%;
-  border-radius:12px;
-  background:#060b18;
-  border:1px solid #1e293b;
-}
+    /* ── Data grid ── */
+    .table-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      padding: 16px;
+      position: relative;
+      z-index: 1;
+    }
 
-/* INFO CARD */
-.info-card{
-  background:#0f172a;
-  border:1px solid #1e3a5f;
-  border-radius:12px;
-  padding:18px 20px;
-  margin-bottom:16px;
-  min-height:150px;
-  transition:border-color .4s;
-}
-.info-card.phase-0{border-color:#334155}
-.info-card.phase-1{border-color:#1e40af}
-.info-card.phase-2{border-color:#065f46}
-.info-card.phase-3{border-color:#4c1d95}
-.info-card.phase-4{border-color:#7c2d12}
-.info-card.phase-5{border-color:#854d0e}
-.info-card.phase-6{border-color:#166534;box-shadow:0 0 24px #16653430}
+    .cell {
+      height: 28px;
+      border-radius: 0.45rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #94a3b8;
+      border: 1px solid rgba(148,163,184,0.08);
+      background: rgba(30,41,59,0.4);
+      transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
 
-.info-stage-name{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:10px;
-}
-.info-badge{
-  font-size:11px;
-  font-weight:700;
-  padding:3px 10px;
-  border-radius:5px;
-  letter-spacing:.08em;
-}
-.b0{background:#1e293b;color:#94a3b8}
-.b1{background:#1e3a8a;color:#93c5fd}
-.b2{background:#064e3b;color:#6ee7b7}
-.b3{background:#2e1065;color:#c4b5fd}
-.b4{background:#431407;color:#fdba74}
-.b5{background:#713f12;color:#fcd34d}
-.b6{background:#14532d;color:#86efac}
+    .header-cell {
+      background: rgba(37,99,235,0.22);
+      color: #93c5fd;
+      border-color: rgba(59,130,246,0.2);
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+    }
 
-.info-title{
-  font-size:18px;
-  font-weight:700;
-  color:#f1f5f9;
-  margin-bottom:8px;
-  line-height:1.3;
-}
-.info-desc{
-  font-size:13px;
-  color:#94a3b8;
-  line-height:1.78;
-}
-.info-desc strong{color:#e2e8f0}
-.info-desc .hl{color:#60a5fa;font-weight:600}
-.info-desc .hg{color:#34d399;font-weight:600}
-.info-desc .hy{color:#fbbf24;font-weight:600}
-.info-desc .hp{color:#a78bfa;font-weight:600}
-.info-desc .hr{color:#f87171;font-weight:600}
+    .active-row {
+      background: rgba(244,63,94,0.28) !important;
+      color: #fda4af !important;
+      border-color: rgba(244,63,94,0.3) !important;
+      transform: scaleY(1.05);
+      box-shadow: 0 0 8px rgba(244,63,94,0.3);
+    }
 
-.facts-row{
-  display:flex;
-  gap:8px;
-  margin-top:12px;
-  flex-wrap:wrap;
-}
-.fact-chip{
-  background:#1e293b;
-  border:1px solid #334155;
-  border-radius:6px;
-  padding:5px 10px;
-  font-size:11px;
-  font-family:'JetBrains Mono',monospace;
-}
-.fact-chip span{
-  color:#64748b;
-  margin-right:4px;
-}
+    .active-column {
+      background: rgba(16,185,129,0.28) !important;
+      color: #6ee7b7 !important;
+      border-color: rgba(16,185,129,0.3) !important;
+      transform: scaleX(1.05);
+      box-shadow: 0 0 8px rgba(16,185,129,0.3);
+    }
 
-/* ROUTER PANELS */
-.r-panels{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
-  margin-bottom:16px;
-}
-.r-panel{
-  background:#0f172a;
-  border-radius:10px;
-  border:1px solid #1e293b;
-  padding:12px;
-  transition:border-color .4s;
-}
-.r-panel.active-r{
-  border-color:#3b82f6;
-  box-shadow:0 0 0 1px #3b82f640 inset;
-}
-.rp-hdr{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:10px;
-}
-.rp-circle{
-  width:34px;
-  height:34px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:700;
-  font-size:12px;
-  flex-shrink:0;
-}
-.rp-info h4{
-  font-size:13px;
-  font-weight:700;
-  color:#f1f5f9;
-}
-.rp-info p{
-  font-size:10px;
-  color:#64748b;
-  font-family:'JetBrains Mono',monospace;
-}
-.rp-state{
-  display:inline-block;
-  font-size:10px;
-  font-weight:700;
-  padding:2px 8px;
-  border-radius:4px;
-  letter-spacing:.06em;
-  margin-bottom:8px;
-}
-.st-DOWN{background:#1e293b;color:#64748b}
-.st-INIT{background:#1c1917;color:#fb923c}
-.st-2WAY{background:#064e3b;color:#34d399}
-.st-EXSTART{background:#1e1b4b;color:#818cf8}
-.st-EXCHANGE{background:#2e1065;color:#a78bfa}
-.st-LOADING{background:#451a03;color:#fb923c}
-.st-FULL{background:#052e16;color:#4ade80;box-shadow:0 0 8px #4ade8040}
-.rp-fields{
-  font-size:10px;
-  font-family:'JetBrains Mono',monospace;
-}
-.rp-field{
-  display:flex;
-  justify-content:space-between;
-  padding:2px 0;
-  border-bottom:1px solid #1e293b;
-  color:#64748b;
-}
-.rp-field:last-child{border-bottom:none}
-.rp-field .fv{color:#cbd5e1}
+    .faded { opacity: 0.18; }
 
-/* LOG */
-.log-section{
-  background:#060b18;
-  border:1px solid #1e293b;
-  border-radius:10px;
-  padding:10px 14px;
-  margin-bottom:16px;
-  height:98px;
-  overflow-y:auto;
-  font-family:'JetBrains Mono',monospace;
-  font-size:11px;
-}
-.log-line{
-  display:flex;
-  gap:10px;
-  padding:1.5px 0;
-  border-bottom:1px solid #0f172a;
-}
-.log-line:last-child{border-bottom:none}
-.lt{color:#334155;min-width:52px}
-.lm{color:#94a3b8}
-.lm .lh{color:#60a5fa}
-.lm .lg{color:#34d399}
-.lm .ly{color:#fbbf24}
-.lm .lp{color:#a78bfa}
-.lm .lr{color:#f87171}
+    /* ── Progress bar ── */
+    .progress-track {
+      background: rgba(30,41,59,0.6);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.05s linear;
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%);
+      animation: shimmerBar 1.5s infinite;
+    }
+    @keyframes shimmerBar {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+    .fill-red   { background: linear-gradient(90deg, #be123c, #f43f5e, #fb7185); }
+    .fill-green { background: linear-gradient(90deg, #059669, #10b981, #34d399); }
 
-@media (max-width:860px){
-  .r-panels{grid-template-columns:1fr}
-}
-</style>
+    /* ── Engine log ── */
+    .engine-log {
+      background: rgba(2,6,23,0.9);
+      border: 1px solid rgba(148,163,184,0.08);
+      border-radius: 1rem;
+      padding: 1rem;
+      min-height: 140px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 0.55rem;
+      align-items: flex-start;
+      color: #94a3b8;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      line-height: 1.4rem;
+      padding: 0.18rem 0;
+      opacity: 0;
+      transform: translateX(-8px);
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .log-line.active {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .log-step {
+      min-width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+    .log-step.row { background: linear-gradient(135deg,#be123c,#f43f5e); box-shadow: 0 0 6px rgba(244,63,94,0.5); }
+    .log-step.col { background: linear-gradient(135deg,#059669,#10b981); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+
+    /* ── KPI cards ── */
+    .kpi-card {
+      background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(2,6,23,0.95));
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── Big time display ── */
+    .time-display {
+      font-family: 'Space Mono', monospace;
+      font-size: 2.8rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      transition: text-shadow 0.3s ease;
+    }
+    .time-display.row-time  { color: #f43f5e; text-shadow: 0 0 20px rgba(244,63,94,0.4); }
+    .time-display.col-time  { color: #10b981; text-shadow: 0 0 20px rgba(16,185,129,0.4); }
+
+    /* ── Speedup badge ── */
+    .speedup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      font-family: 'Space Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: 1px solid rgba(59,130,246,0.3);
+      background: rgba(59,130,246,0.12);
+      color: #93c5fd;
+      transition: all 0.3s ease;
+    }
+
+    /* ── Run button ── */
+    .run-btn {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      border: none;
+      border-radius: 1rem;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 0.75rem 1.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.02em;
+    }
+    .run-btn:hover {
+      background: linear-gradient(135deg, #2563eb, #60a5fa);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59,130,246,0.4);
+    }
+    .run-btn:active { transform: scale(0.98); }
+    .run-btn::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -75%;
+      width: 50%;
+      height: 200%;
+      background: rgba(255,255,255,0.15);
+      transform: skewX(-20deg);
+      transition: left 0.5s ease;
+    }
+    .run-btn:hover::before { left: 150%; }
+
+    /* ── Animated title gradient ── */
+    .title-gradient {
+      background: linear-gradient(90deg, #f43f5e, #fb923c, #facc15, #10b981, #3b82f6);
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientFlow 6s ease infinite;
+    }
+    @keyframes gradientFlow {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* ── Pulse ring on KPI ── */
+    @keyframes pulseRing {
+      0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); }
+      70%  { box-shadow: 0 0 0 12px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    .pulse-ring { animation: pulseRing 2.5s infinite; }
+
+    /* ── Section reveal on load ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      animation: revealUp 0.6s forwards;
+    }
+    @keyframes revealUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .reveal-d1 { animation-delay: 0.05s; }
+    .reveal-d2 { animation-delay: 0.15s; }
+    .reveal-d3 { animation-delay: 0.25s; }
+    .reveal-d4 { animation-delay: 0.35s; }
+
+    /* ── Divider ── */
+    .neon-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(59,130,246,0.4), rgba(16,185,129,0.4), transparent);
+      margin: 0.5rem 0;
+    }
+
+    /* ── Select styling ── */
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--blue); }
+
+    /* ── Result flash ── */
+    @keyframes resultFlash {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.08); }
+      60%  { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+    .result-flash { animation: resultFlash 0.5s ease; }
+
+    /* ── Tooltip ── */
+    .tooltip-wrap { position: relative; }
+    .tooltip-wrap:hover .tooltip-box { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .tooltip-box {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(6px);
+      background: rgba(15,23,42,0.97);
+      border: 1px solid rgba(148,163,184,0.2);
+      border-radius: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      color: #cbd5e1;
+      opacity: 0;
+      transition: all 0.2s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── Particle data-stream ── */
+    .stream-particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 3;
+      animation: streamDown 0.8s ease forwards;
+    }
+    @keyframes streamDown {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(30px) scale(0.3); }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 99px; }
+  </style>
 </head>
-<body>
-<div id="app">
-  <div class="hdr">
-    <div class="hdr-title">📨 OSPF entre 2 routers</div>
-    <div class="hdr-sub">Explicación paso a paso · un solo paquete visible · estilo Packet Tracer</div>
-  </div>
+<body class="text-slate-100">
 
-  <div class="top-controls">
-    <button class="btn-main btn-play" id="btn-play" onclick="togglePlay()">▶ Iniciar</button>
-    <button class="btn-main btn-reset" onclick="doReset()">↺ Reset</button>
-    <button class="btn-main btn-step" onclick="doStep()">→ Paso</button>
+<canvas id="particles-canvas"></canvas>
 
-    <div class="speed-ctl">
-      <span>Velocidad</span>
-      <input type="range" min="0.3" max="1.6" step="0.1" value="0.6" oninput="setSpeed(this.value)">
-      <span id="spd-lbl" style="min-width:28px">0.6×</span>
+<div class="content-wrap max-w-7xl mx-auto px-4 py-8 md:py-12">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="mb-10 reveal reveal-d1">
+    <div class="glass rounded-3xl p-6 md:p-8">
+      <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+        <div>
+          <div class="badge mb-4">
+            <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+            PF-3858 · Almacenes de Datos y OLAP · UCR
+          </div>
+          <h1 class="text-3xl md:text-5xl font-black tracking-tight mb-2 leading-tight">
+            Simulador visual:
+            <br>
+            <span class="text-rose-400">Row-based</span>
+            <span class="text-slate-500 mx-2">vs</span>
+            <span class="text-emerald-400">Columnar</span>
+          </h1>
+          <div class="neon-divider my-3 max-w-md"></div>
+          <p class="text-slate-400 max-w-2xl text-sm md:text-base leading-relaxed">
+            El motor orientado a <span class="text-rose-300 font-semibold">filas</span> escanea registros completos.
+            El motor <span class="text-emerald-300 font-semibold">columnar</span> accede solo a las columnas requeridas.
+            Observa la diferencia en tiempo real.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 min-w-[300px]">
+          <div class="kpi-card">
+            <div class="text-slate-500 text-xs uppercase tracking-widest mb-1 font-mono">Consulta</div>
+            <div class="text-lg font-bold text-blue-300">SUM + filtro</div>
+          </div>
+          <div class="kpi-card">
+            <div class="text-slate-500 text-xs uppercase tracking-widest mb-1 font-mono">Objetivo</div>
+            <div class="text-lg font-bold text-emerald-300">OLAP analytics</div>
+          </div>
+          <div class="kpi-card col-span-2 pulse-ring" style="border-color:rgba(59,130,246,0.2)">
+            <div class="text-slate-500 text-xs uppercase tracking-widest mb-1 font-mono">Principio</div>
+            <div class="text-base font-bold text-white">Leer menos datos = responder más rápido ⚡</div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+  </header>
 
-  <div class="stages-bar" id="stages-bar"></div>
-  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  <!-- ═══ CONTROLS ═══ -->
+  <section class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6 reveal reveal-d2">
+    <div class="glass rounded-3xl p-5 xl:col-span-2">
+      <div class="flex flex-col md:flex-row md:items-end gap-4">
+        <div class="flex-1">
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-2 font-mono">Volumen de datos</label>
+          <select id="dataVolume" class="w-full rounded-xl bg-slate-900/80 border border-slate-700/60 px-4 py-3 text-white text-sm focus:border-blue-500 transition">
+            <option value="100000">100 mil filas</option>
+            <option value="1000000">1 millón de filas</option>
+            <option value="5000000" selected>5 millones de filas</option>
+            <option value="10000000">10 millones de filas</option>
+          </select>
+        </div>
+        <div class="flex-1">
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-2 font-mono">Tipo de consulta</label>
+          <select id="queryType" class="w-full rounded-xl bg-slate-900/80 border border-slate-700/60 px-4 py-3 text-white text-sm focus:border-emerald-500 transition">
+            <option value="sum">SUM(amount) con filtro por año</option>
+            <option value="avg">AVG(amount) agrupado por categoría</option>
+            <option value="count">COUNT(*) con filtro por región</option>
+          </select>
+        </div>
+        <div>
+          <button id="runDemo" class="run-btn w-full md:w-auto whitespace-nowrap">
+            ▶ Ejecutar simulación
+          </button>
+        </div>
+      </div>
 
-  <div class="exchange-card">
-    <div class="exchange-top">
-      <span class="ex-badge" id="ex-badge">SIN TRÁFICO</span>
-      <div class="ex-main" id="ex-main">Esperando iniciar simulación</div>
+      <div class="sql-box p-4 mt-5">
+        <div class="text-xs uppercase tracking-widest text-slate-500 mb-2 font-mono flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Consulta simulada
+        </div>
+        <code id="sqlText" class="text-emerald-300 text-sm md:text-base font-mono break-words"></code>
+        <span class="inline-block w-2 h-4 bg-emerald-400 ml-1 align-middle" style="animation: blink 1s steps(1) infinite"></span>
+      </div>
+      <style>@keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }</style>
     </div>
-    <div class="ex-sub" id="ex-sub">
-      Aquí se mostrará el paquete que está viajando y qué función cumple dentro del establecimiento de vecindad OSPF.
+
+    <div class="glass rounded-3xl p-5">
+      <div class="text-sm font-bold text-slate-200 mb-4 uppercase tracking-wider">¿Qué demuestra esto?</div>
+      <div class="space-y-4">
+        <div class="flex gap-3 items-start">
+          <div class="w-2 h-2 rounded-full bg-rose-400 mt-2 flex-shrink-0 shadow-lg shadow-rose-500/40"></div>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            <span class="text-rose-300 font-bold">Row-based:</span> lee filas completas aunque use pocas columnas — mucho I/O innecesario.
+          </p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-2 h-2 rounded-full bg-emerald-400 mt-2 flex-shrink-0 shadow-lg shadow-emerald-500/40"></div>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            <span class="text-emerald-300 font-bold">Columnar:</span> accede solo a las columnas necesarias — mejor compresión y vectorización.
+          </p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-2 h-2 rounded-full bg-blue-400 mt-2 flex-shrink-0 shadow-lg shadow-blue-500/40"></div>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            <span class="text-blue-300 font-bold">OLAP:</span> consultas analíticas sobre millones de filas — el diseño columnar es ideal.
+          </p>
+        </div>
+      </div>
     </div>
-    <div class="ex-dir" id="ex-dir">—</div>
-  </div>
+  </section>
 
-  <div class="canvas-section">
-    <canvas id="c" height="310"></canvas>
-  </div>
+  <!-- ═══ ENGINES ═══ -->
+  <section class="grid grid-cols-1 2xl:grid-cols-2 gap-5 mb-6">
 
-  <div class="info-card" id="info-card">
-    <div class="info-stage-name">
-      <span class="info-badge b0" id="info-badge">ESTADO 0</span>
+    <!-- Row engine -->
+    <div id="row-panel" class="glass rounded-3xl p-5 reveal reveal-d3" style="border-color: rgba(244,63,94,0.1)">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-3 h-3 rounded-full bg-rose-500 shadow-lg shadow-rose-500/60 animate-pulse"></div>
+            <h2 class="text-xl font-black text-rose-400 tracking-tight">Motor orientado a filas</h2>
+          </div>
+          <p class="text-xs text-slate-500 font-mono">Escanea TODOS los campos de cada registro</p>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">Tiempo</div>
+          <div id="rowTime" class="time-display row-time">0.00 s</div>
+        </div>
+      </div>
+
+      <div class="scan-area mb-4">
+        <div id="rowScanLine" class="scan-line scan-line-row"></div>
+        <div id="rowGrid" class="table-grid"></div>
+      </div>
+
+      <div class="progress-track mb-3">
+        <div id="rowProgress" class="progress-fill fill-red" style="width:0%"></div>
+      </div>
+      <div id="rowReadText" class="text-xs text-slate-500 font-mono mb-4">Esperando ejecución...</div>
+
+      <div class="engine-log" style="border-color: rgba(244,63,94,0.08)">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest">Engine log</div>
+          <span class="badge" style="color:#fda4af; border-color:rgba(244,63,94,0.2)">Row engine</span>
+        </div>
+        <div id="rowLog" class="space-y-1"></div>
+      </div>
     </div>
-    <div class="info-title" id="info-title">Listo para iniciar</div>
-    <div class="info-desc" id="info-desc">Presiona <strong>▶ Iniciar</strong> para ver cómo se forma una vecindad OSPF entre R1 y R2.</div>
-    <div class="facts-row" id="facts-row"></div>
-  </div>
 
-  <div class="r-panels" id="r-panels"></div>
+    <!-- Column engine -->
+    <div id="col-panel" class="glass rounded-3xl p-5 reveal reveal-d3" style="border-color: rgba(16,185,129,0.1)">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/60 animate-pulse"></div>
+            <h2 class="text-xl font-black text-emerald-400 tracking-tight">Motor columnar</h2>
+          </div>
+          <p class="text-xs text-slate-500 font-mono">Lee ÚNICAMENTE las columnas requeridas</p>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">Tiempo</div>
+          <div id="colTime" class="time-display col-time">0.00 s</div>
+        </div>
+      </div>
 
-  <div class="log-section" id="log"></div>
+      <div class="scan-area mb-4">
+        <div id="colScanLine" class="scan-line scan-line-col"></div>
+        <div id="colGrid" class="table-grid"></div>
+      </div>
+
+      <div class="progress-track mb-3">
+        <div id="colProgress" class="progress-fill fill-green" style="width:0%"></div>
+      </div>
+      <div id="colReadText" class="text-xs text-slate-500 font-mono mb-4">Esperando ejecución...</div>
+
+      <div class="engine-log" style="border-color: rgba(16,185,129,0.08)">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest">Engine log</div>
+          <span class="badge" style="color:#6ee7b7; border-color:rgba(16,185,129,0.2)">Column engine</span>
+        </div>
+        <div id="colLog" class="space-y-1"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ RESULTS ═══ -->
+  <section class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-10 reveal reveal-d4">
+    <div class="glass rounded-3xl p-5 xl:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-xl font-black text-white">Comparación de rendimiento</h3>
+          <p class="text-xs text-slate-500 font-mono mt-1">Tiempo estimado de respuesta · misma consulta</p>
+        </div>
+        <span class="badge">Simulación educativa</span>
+      </div>
+      <div class="bg-white/[0.03] rounded-2xl p-4 h-[300px] border border-white/5">
+        <canvas id="performanceChart"></canvas>
+      </div>
+    </div>
+
+    <div class="glass rounded-3xl p-5">
+      <h3 class="text-xl font-black mb-4">Resumen técnico</h3>
+      <div class="space-y-3">
+        <div class="kpi-card tooltip-wrap" style="border-color:rgba(244,63,94,0.15)">
+          <div class="tooltip-box">Porcentaje de datos leídos de cada fila</div>
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">I/O — Row-based</div>
+          <div id="rowReadKpi" class="text-2xl font-black text-rose-400 font-mono">100%</div>
+          <div class="text-xs text-slate-500 mt-1">todos los campos por cada registro</div>
+        </div>
+        <div class="kpi-card tooltip-wrap" style="border-color:rgba(16,185,129,0.15)">
+          <div class="tooltip-box">Solo columnas usadas en la consulta</div>
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">I/O — Columnar</div>
+          <div id="colReadKpi" class="text-2xl font-black text-emerald-400 font-mono">20%</div>
+          <div class="text-xs text-slate-500 mt-1">solo columnas necesarias</div>
+        </div>
+        <div class="kpi-card tooltip-wrap" style="border-color:rgba(59,130,246,0.15)">
+          <div class="tooltip-box">Mejora relativa del enfoque columnar</div>
+          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">Speedup estimado</div>
+          <div id="speedupKpi" class="text-2xl font-black text-blue-400 font-mono">0.0×</div>
+          <div class="text-xs text-slate-500 mt-1">mejora relativa · enfoque columnar</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="text-center text-slate-600 text-xs pb-8 font-mono">
+    Demo educativa · Almacenamiento por filas vs columnar · OLAP Analytics
+  </footer>
 </div>
 
 <script>
-const R = [
-  {id:'R1',rid:'1.1.1.1',col:'#3b82f6',bg:'#1e3a8a',ip:'192.168.12.1',pri:100},
-  {id:'R2',rid:'2.2.2.2',col:'#f87171',bg:'#7f1d1d',ip:'192.168.12.2',pri:50}
+/* ─── Particles background ─── */
+(function() {
+  const canvas = document.getElementById('particles-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const colors = ['rgba(59,130,246,', 'rgba(16,185,129,', 'rgba(244,63,94,', 'rgba(6,182,212,'];
+
+  for (let i = 0; i < 55; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + 0.4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.4 + 0.1
+    });
+  }
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + p.alpha + ')';
+      ctx.fill();
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width)  p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+    });
+    requestAnimationFrame(drawParticles);
+  }
+  drawParticles();
+})();
+
+/* ─── App logic ─── */
+const headers    = ['ID', 'YEAR', 'CATEGORY', 'REGION', 'AMOUNT'];
+const sampleRows = [
+  ['1','2024','A','Norte','120'],
+  ['2','2023','B','Sur','80'],
+  ['3','2024','A','Este','210'],
+  ['4','2022','C','Oeste','95'],
+  ['5','2024','B','Norte','150'],
+  ['6','2023','A','Sur','60'],
+  ['7','2024','C','Este','310'],
+  ['8','2024','B','Oeste','170']
 ];
 
-const STAGES = [
-  {
-    lbl:'DOWN', icon:'💤', bdgClass:'b0',
-    title:'Estado DOWN — No existe vecindad todavía',
-    desc:`En <span class="hr">DOWN</span>, los routers aún no se reconocen como vecinos. OSPF puede estar habilitado en la interfaz, pero todavía no se ha recibido ningún Hello válido del otro lado. En este punto, no existe información del vecino en la tabla OSPF. Si antes existía vecindad y el <span class="hy">Dead Timer</span> expiró, el vecino vuelve a DOWN.`,
-    facts:[['Estado','DOWN'],['Hello Timer','10 s'],['Dead Timer','40 s'],['Vecino','No conocido']],
-    states:['DOWN','DOWN'],
-    activePacket:null
-  },
-  {
-    lbl:'INIT', icon:'📡', bdgClass:'b1',
-    title:'Estado INIT — Primer Hello enviado',
-    desc:`Aquí comienza realmente el descubrimiento. R2 envía un paquete <span class="hl">Hello</span> hacia R1. El Hello incluye parámetros importantes como: <strong>Router ID</strong>, <strong>Area ID</strong>, máscara, timers Hello/Dead, prioridad y autenticación si existe. En INIT, un router ya recibió o envió Hello, pero <span class="hr">todavía no ve su propio Router ID</span> dentro de la lista de vecinos del otro.`,
-    facts:[['Paquete','Hello'],['Origen','R2'],['Destino','R1'],['Objetivo','Descubrir vecino']],
-    states:['DOWN','INIT'],
-    activePacket:{
-      type:'HELLO',
-      detail:'RID 2.2.2.2 · Area 0 · 10/40',
-      direction:'R2 → R1',
-      description:'R2 anuncia su presencia a R1 mediante Hello.',
-      color:'#3b82f6',
-      from:1,
-      to:0
-    }
-  },
-  {
-    lbl:'2-WAY', icon:'🤝', bdgClass:'b2',
-    title:'Estado 2-WAY — Comunicación bidireccional confirmada',
-    desc:`R1 responde con un <span class="hl">Hello</span> que ya incluye a R2 en su lista de vecinos. Eso significa que R1 sí escuchó a R2 correctamente. Cuando R2 recibe este Hello y ve que el otro router ya lo reconoce, se alcanza el estado <span class="hg">2-WAY</span>. Este estado confirma que la comunicación ya es bidireccional. En redes broadcast aquí también ocurre la elección de DR/BDR, aunque entre solo dos routers lo importante es entender que ya hay reconocimiento mutuo.`,
-    facts:[['Estado','2-WAY'],['Confirmación','Mutua'],['Vecino','Reconocido'],['Significado','Bidireccional']],
-    states:['2-WAY','2-WAY'],
-    activePacket:{
-      type:'HELLO',
-      detail:'Neighbor = 2.2.2.2',
-      direction:'R1 → R2',
-      description:'R1 devuelve Hello reconociendo a R2 como vecino.',
-      color:'#3b82f6',
-      from:0,
-      to:1
-    }
-  },
-  {
-    lbl:'EXSTART', icon:'🔑', bdgClass:'b3',
-    title:'Estado EXSTART — Se negocia el intercambio de base de datos',
-    desc:`En <span class="hp">EXSTART</span>, ambos routers se preparan para intercambiar información de su base de datos OSPF. Aquí se define quién será <strong>Master</strong> y quién será <strong>Slave</strong> para controlar el orden del intercambio. Normalmente, el router con mayor Router ID actúa como Master. También se negocia el número de secuencia inicial para los paquetes DBD.`,
-    facts:[['Paquete','DBD'],['Función','Negociación'],['Master/Slave','Sí'],['Seq','Inicial']],
-    states:['EXSTART','EXSTART'],
-    activePacket:{
-      type:'DBD',
-      detail:'Seq 0x3A1F · Master/Slave',
-      direction:'R2 → R1',
-      description:'R2 inicia la negociación de Database Description.',
-      color:'#f59e0b',
-      from:1,
-      to:0
-    }
-  },
-  {
-    lbl:'EXCHANGE', icon:'📦', bdgClass:'b4',
-    title:'Estado EXCHANGE — Resumen de LSDB intercambiado',
-    desc:`En esta fase viajan los paquetes <span class="hy">DBD (Database Description)</span>. Aquí no se manda todavía toda la topología completa, sino un <strong>resumen</strong> o encabezados de los LSAs que cada router conoce en su LSDB. La idea es comparar bases de datos para detectar qué información falta en cada lado.`,
-    facts:[['Paquete','DBD'],['Contenido','Headers LSA'],['Objetivo','Comparar LSDB'],['Aún no','LSA completo']],
-    states:['EXCHANGE','EXCHANGE'],
-    activePacket:{
-      type:'DBD',
-      detail:'Headers de LSAs',
-      direction:'R1 → R2',
-      description:'R1 comparte a R2 el resumen de su base de datos OSPF.',
-      color:'#f59e0b',
-      from:0,
-      to:1
-    }
-  },
-  {
-    lbl:'LOADING', icon:'⬇️', bdgClass:'b5',
-    title:'Estado LOADING — Se solicita la información faltante',
-    desc:`Después de comparar resúmenes, R2 detecta qué LSAs aún no tiene o cuáles necesita actualizar. Entonces envía un <span class="hp">LSR (Link State Request)</span> para pedir esa información específica. Este estado existe porque primero se comparan resúmenes y luego se solicitan solo los detalles faltantes, lo cual hace eficiente el proceso.`,
-    facts:[['Paquete','LSR'],['Función','Solicitar LSA'],['Origen','R2'],['Meta','Completar LSDB']],
-    states:['LOADING','LOADING'],
-    activePacket:{
-      type:'LSR',
-      detail:'Request Type 1 LSA',
-      direction:'R2 → R1',
-      description:'R2 solicita a R1 la información detallada que le falta.',
-      color:'#a78bfa',
-      from:1,
-      to:0
-    }
-  },
-  {
-    lbl:'FULL', icon:'🚀', bdgClass:'b6',
-    title:'Estado FULL — Vecindad completa y base sincronizada',
-    desc:`Finalmente, R1 responde con un <span class="hg">LSU (Link State Update)</span> que contiene el LSA completo solicitado. Una vez que ambos routers tienen la misma información topológica, la vecindad llega a <span class="hg">FULL</span>. En este momento la <strong>LSDB está sincronizada</strong> y OSPF puede ejecutar el algoritmo SPF para calcular rutas e instalarlas en la tabla de enrutamiento.`,
-    facts:[['Paquete','LSU'],['Resultado','LSDB sincronizada'],['Estado','FULL'],['Acción','Corre SPF']],
-    states:['FULL','FULL'],
-    activePacket:{
-      type:'LSU',
-      detail:'LSA completo',
-      direction:'R1 → R2',
-      description:'R1 entrega la información final y la vecindad queda FULL.',
-      color:'#34d399',
-      from:0,
-      to:1
-    }
-  }
-];
+const runBtn      = document.getElementById('runDemo');
+const dataVolume  = document.getElementById('dataVolume');
+const queryType   = document.getElementById('queryType');
+const sqlText     = document.getElementById('sqlText');
+const rowGrid     = document.getElementById('rowGrid');
+const colGrid     = document.getElementById('colGrid');
+const rowTimeEl   = document.getElementById('rowTime');
+const colTimeEl   = document.getElementById('colTime');
+const rowProgress = document.getElementById('rowProgress');
+const colProgress = document.getElementById('colProgress');
+const rowReadText = document.getElementById('rowReadText');
+const colReadText = document.getElementById('colReadText');
+const rowScanLine = document.getElementById('rowScanLine');
+const colScanLine = document.getElementById('colScanLine');
+const rowReadKpi  = document.getElementById('rowReadKpi');
+const colReadKpi  = document.getElementById('colReadKpi');
+const speedupKpi  = document.getElementById('speedupKpi');
+const rowLog      = document.getElementById('rowLog');
+const colLog      = document.getElementById('colLog');
+const rowPanel    = document.getElementById('row-panel');
+const colPanel    = document.getElementById('col-panel');
 
-let stage = 0;
-let playing = false;
-let animT = 0;
-let lastTs = null;
-let raf = null;
-let autoTimer = null;
-let spd = 0.6;
-const STAGE_DUR = 7500;
-
-const cv = document.getElementById('c');
-const cx = cv.getContext('2d');
-
-function resizeCv(){
-  cv.width = cv.parentElement.clientWidth;
-  cv.height = Math.round(cv.width * 310 / 980);
-}
-resizeCv();
-window.addEventListener('resize',()=>{resizeCv();draw();});
-
-function rpos(i){
-  const w = cv.width, h = cv.height;
-  return [
-    {x:w*0.24, y:h*0.58},
-    {x:w*0.76, y:h*0.58}
-  ][i];
-}
-
-function roundedRect(ctx,x,y,w,h,r,fill,stroke){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);
-  if(fill) ctx.fill();
-  if(stroke) ctx.stroke();
-}
-
-function drawEnvelopePacket(pkt, x, y){
-  const col = pkt.color;
-  const mainText = pkt.type;
-  const detail = pkt.detail;
-  const direction = pkt.direction;
-
-  cx.font = 'bold 12px JetBrains Mono, monospace';
-  const w1 = cx.measureText(mainText).width;
-  cx.font = '10px JetBrains Mono, monospace';
-  const w2 = cx.measureText(detail).width;
-  const w3 = cx.measureText(direction).width;
-
-  const boxW = Math.max(82, w1 + 28);
-  const boxH = 30;
-
-  cx.save();
-  cx.shadowColor = col;
-  cx.shadowBlur = 16;
-  cx.fillStyle = col + '22';
-  roundedRect(cx, x - boxW/2, y - boxH/2, boxW, boxH, 6, true, false);
-  cx.restore();
-
-  const topW = w2 + 14;
-  cx.fillStyle = '#020617';
-  cx.strokeStyle = '#334155';
-  cx.lineWidth = 1;
-  roundedRect(cx, x - topW/2, y - 38, topW, 18, 5, true, true);
-  cx.fillStyle = '#cbd5e1';
-  cx.font = '10px JetBrains Mono, monospace';
-  cx.textAlign = 'center';
-  cx.textBaseline = 'middle';
-  cx.fillText(detail, x, y - 29);
-
-  cx.fillStyle = '#0b1220';
-  cx.strokeStyle = col;
-  cx.lineWidth = 1.8;
-  roundedRect(cx, x - boxW/2, y - boxH/2, boxW, boxH, 6, true, true);
-
-  cx.beginPath();
-  cx.moveTo(x - boxW/2 + 7, y - boxH/2 + 5);
-  cx.lineTo(x, y + 3);
-  cx.lineTo(x + boxW/2 - 7, y - boxH/2 + 5);
-  cx.strokeStyle = col;
-  cx.lineWidth = 1.2;
-  cx.stroke();
-
-  cx.beginPath();
-  cx.moveTo(x - boxW/2 + 7, y + boxH/2 - 6);
-  cx.lineTo(x, y + 3);
-  cx.lineTo(x + boxW/2 - 7, y + boxH/2 - 6);
-  cx.stroke();
-
-  cx.fillStyle = '#e2e8f0';
-  cx.font = 'bold 12px JetBrains Mono, monospace';
-  cx.fillText(mainText, x, y + 1);
-
-  const botW = w3 + 14;
-  cx.fillStyle = '#020617';
-  cx.strokeStyle = '#1e293b';
-  roundedRect(cx, x - botW/2, y + 24, botW, 18, 5, true, true);
-  cx.fillStyle = col;
-  cx.font = '10px JetBrains Mono, monospace';
-  cx.fillText(direction, x, y + 33);
-}
-
-function drawRouter(x,y,radius,r,isCenter,state){
-  const isFull = state === 'FULL';
-  const glowCol = isCenter ? '#f87171' : r.col;
-
-  if(isCenter){
-    cx.beginPath();
-    cx.arc(x,y,radius+12,0,2*Math.PI);
-    cx.fillStyle = '#f8717120';
-    cx.fill();
-  } else if(isFull){
-    cx.beginPath();
-    cx.arc(x,y,radius+8,0,2*Math.PI);
-    cx.fillStyle = r.col + '22';
-    cx.fill();
-  }
-
-  cx.beginPath();
-  cx.arc(x,y,radius+3,0,2*Math.PI);
-  cx.strokeStyle = glowCol;
-  cx.lineWidth = isCenter ? 2.6 : 1.2;
-  cx.stroke();
-
-  cx.beginPath();
-  cx.arc(x,y,radius,0,2*Math.PI);
-  cx.fillStyle = isCenter ? '#2a0f14' : (isFull ? r.bg : '#0f172a');
-  cx.fill();
-  cx.strokeStyle = glowCol;
-  cx.lineWidth = 1.7;
-  cx.stroke();
-
-  cx.strokeStyle = '#e2e8f0';
-  cx.lineWidth = 1.2;
-  cx.beginPath();
-  cx.moveTo(x-radius*.50, y-radius*.08);
-  cx.lineTo(x+radius*.50, y-radius*.08);
-  cx.stroke();
-
-  cx.beginPath();
-  cx.moveTo(x-radius*.28, y+radius*.18);
-  cx.lineTo(x+radius*.28, y+radius*.18);
-  cx.stroke();
-
-  cx.beginPath();
-  cx.moveTo(x-radius*.23, y-radius*.08);
-  cx.lineTo(x-radius*.14, y+radius*.18);
-  cx.stroke();
-
-  cx.beginPath();
-  cx.moveTo(x+radius*.23, y-radius*.08);
-  cx.lineTo(x+radius*.14, y+radius*.18);
-  cx.stroke();
-
-  cx.fillStyle = isCenter ? '#fca5a5' : r.col;
-  cx.font = `bold ${Math.round(cv.width*.018)}px Inter,sans-serif`;
-  cx.textAlign = 'center';
-  cx.textBaseline = 'middle';
-  cx.fillText(r.id, x, y-radius*.82);
-
-  cx.fillStyle = isCenter ? '#fecaca' : '#94a3b8';
-  cx.font = `${Math.round(cv.width*.011)}px JetBrains Mono,monospace`;
-  cx.fillText(r.rid, x, y+radius+14);
-
-  const scol = {
-    DOWN:'#475569',
-    INIT:'#fb923c',
-    '2-WAY':'#34d399',
-    EXSTART:'#818cf8',
-    EXCHANGE:'#a78bfa',
-    LOADING:'#fbbf24',
-    FULL:'#4ade80'
-  }[state] || '#64748b';
-
-  cx.fillStyle = scol;
-  cx.font = `bold ${Math.round(cv.width*.012)}px Inter,sans-serif`;
-  cx.fillText(state, x, y+radius+30);
-
-  cx.fillStyle = isCenter ? '#fda4af' : '#60a5fa';
-  cx.font = `${Math.round(cv.width*.010)}px JetBrains Mono,monospace`;
-  cx.fillText(r.ip, x, y-radius-12);
-}
-
-function drawLinks(){
-  const st = STAGES[stage];
-  const p1 = rpos(0);
-  const p2 = rpos(1);
-
-  cx.beginPath();
-  cx.moveTo(p1.x,p1.y);
-  cx.lineTo(p2.x,p2.y);
-  cx.strokeStyle = '#1e3a5f';
-  cx.lineWidth = 2;
-  cx.setLineDash([8,5]);
-  cx.stroke();
-  cx.setLineDash([]);
-
-  const mx = (p1.x+p2.x)/2;
-  const my = (p1.y+p2.y)/2 + 14;
-
-  cx.font = '10px JetBrains Mono, monospace';
-  const net = '192.168.12.0/30';
-  const tw = cx.measureText(net).width + 12;
-  cx.fillStyle = '#0f172a';
-  cx.strokeStyle = '#1e293b';
-  roundedRect(cx, mx-tw/2, my-9, tw, 18, 4, true, true);
-  cx.fillStyle = '#94a3b8';
-  cx.textAlign = 'center';
-  cx.textBaseline = 'middle';
-  cx.fillText(net, mx, my);
-
-  const pkt = st.activePacket;
-  if(pkt){
-    const a = rpos(pkt.from);
-    const b = rpos(pkt.to);
-    cx.beginPath();
-    cx.moveTo(a.x,a.y);
-    cx.lineTo(b.x,b.y);
-    cx.strokeStyle = pkt.color;
-    cx.lineWidth = 3;
-    cx.stroke();
-  }
-}
-
-function drawBackground(){
-  const w = cv.width;
-  const h = cv.height;
-  cx.clearRect(0,0,w,h);
-
-  cx.strokeStyle='#0f172a';
-  cx.lineWidth=1;
-  for(let x=0;x<w;x+=40){
-    cx.beginPath();
-    cx.moveTo(x,0);
-    cx.lineTo(x,h);
-    cx.stroke();
-  }
-  for(let y=0;y<h;y+=40){
-    cx.beginPath();
-    cx.moveTo(0,y);
-    cx.lineTo(w,y);
-    cx.stroke();
-  }
-}
-
-function drawActivePacket(){
-  const st = STAGES[stage];
-  const pkt = st.activePacket;
-  if(!pkt) return;
-
-  const pa = rpos(pkt.from);
-  const pb = rpos(pkt.to);
-
-  let p = ((animT * 0.00008 * spd) % 1);
-  const x = pa.x + (pb.x - pa.x) * p;
-  const y = pa.y + (pb.y - pa.y) * p - Math.sin(p * Math.PI) * 22;
-
-  drawEnvelopePacket(pkt, x, y);
-}
-
-function draw(){
-  drawBackground();
-  drawLinks();
-
-  const st = STAGES[stage];
-
-  R.forEach((r,i)=>{
-    const p = rpos(i);
-    const radius = cv.width * 0.058;
-    drawRouter(p.x,p.y,radius,r,i===1,st.states[i]);
+function buildGrid(container) {
+  container.innerHTML = '';
+  headers.forEach(h => {
+    const c = document.createElement('div');
+    c.className = 'cell header-cell';
+    c.textContent = h;
+    container.appendChild(c);
   });
+  sampleRows.forEach(row => row.forEach(v => {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    c.textContent = v;
+    container.appendChild(c);
+  }));
+}
+buildGrid(rowGrid);
+buildGrid(colGrid);
 
-  drawActivePacket();
+/* Chart.js */
+const chartCanvas = document.getElementById('performanceChart').getContext('2d');
+const chart = new Chart(chartCanvas, {
+  type: 'bar',
+  data: {
+    labels: ['Motor por filas', 'Motor columnar'],
+    datasets: [{
+      label: 'Tiempo (ms)',
+      data: [0, 0],
+      backgroundColor: [
+        'rgba(244,63,94,0.7)',
+        'rgba(16,185,129,0.7)'
+      ],
+      borderColor: ['#f43f5e', '#10b981'],
+      borderWidth: 1.5,
+      borderRadius: 10,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 700, easing: 'easeOutQuart' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(5,10,20,0.95)',
+        borderColor: 'rgba(148,163,184,0.2)',
+        borderWidth: 1,
+        titleColor: '#e2e8f0',
+        bodyColor: '#94a3b8',
+        padding: 10,
+        callbacks: { label: c => `  ${c.raw.toFixed(0)} ms` }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(148,163,184,0.06)' },
+        ticks: { color: '#475569', font: { family: 'Space Mono', size: 11 } }
+      },
+      x: {
+        ticks: { color: '#64748b', font: { family: 'Syne', weight: '700', size: 12 } },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+/* SQL typing effect */
+const sqlQueries = {
+  sum:   'SELECT SUM(amount) FROM sales WHERE year = 2024;',
+  avg:   'SELECT category, AVG(amount) FROM sales GROUP BY category;',
+  count: "SELECT COUNT(*) FROM sales WHERE region = 'Norte';"
+};
+
+let typingTimer = null;
+function typeSql(text) {
+  clearTimeout(typingTimer);
+  sqlText.textContent = '';
+  let i = 0;
+  function type() {
+    if (i < text.length) {
+      sqlText.textContent += text[i++];
+      typingTimer = setTimeout(type, 22);
+    }
+  }
+  type();
 }
 
-function loop(ts){
-  if(!playing) return;
-  if(!lastTs) lastTs = ts;
-  animT += (ts - lastTs);
-  lastTs = ts;
-  draw();
-  raf = requestAnimationFrame(loop);
+function updateSql() { typeSql(sqlQueries[queryType.value] || sqlQueries.sum); }
+queryType.addEventListener('change', updateSql);
+updateSql();
+
+/* Scenarios */
+function getScenario(volume, type) {
+  const s = volume / 1000000;
+  if (type === 'sum') return {
+    rowTime: 1.4*s, colTime: 0.08*s,
+    rowRead: '100%', colRead: '40%',
+    rowText: 'Lee YEAR, CATEGORY, REGION, AMOUNT e ID en cada fila.',
+    colText: 'Lee solo YEAR y AMOUNT para filtrar y sumar.',
+    rowSteps: [
+      'Recorre cada fila completa de la tabla sales.',
+      'Lee todas las columnas aunque la consulta use pocas.',
+      'Evalúa la condición YEAR = 2024 fila por fila.',
+      'Extrae AMOUNT de las filas que cumplen el filtro.',
+      'Acumula el total final y devuelve el resultado.'
+    ],
+    colSteps: [
+      'Localiza únicamente las columnas YEAR y AMOUNT.',
+      'Escanea la columna YEAR para aplicar el filtro 2024.',
+      'Descarta columnas irrelevantes como ID, CATEGORY y REGION.',
+      'Lee AMOUNT solo en los registros filtrados.',
+      'Suma los valores y devuelve el resultado.'
+    ]
+  };
+  if (type === 'avg') return {
+    rowTime: 1.8*s, colTime: 0.12*s,
+    rowRead: '100%', colRead: '40%',
+    rowText: 'Lee todas las columnas aunque solo agrupa por CATEGORY y usa AMOUNT.',
+    colText: 'Lee solo CATEGORY y AMOUNT para calcular el promedio agrupado.',
+    rowSteps: [
+      'Recorre filas completas para cada registro.',
+      'Lee todas las columnas de la fila aunque no se ocupen.',
+      'Toma CATEGORY y AMOUNT desde cada fila leída.',
+      'Agrupa los registros por categoría.',
+      'Calcula el promedio final por grupo.'
+    ],
+    colSteps: [
+      'Accede solo a las columnas CATEGORY y AMOUNT.',
+      'Ignora columnas no usadas por la consulta.',
+      'Forma grupos por CATEGORY con lectura columnar.',
+      'Procesa los valores AMOUNT en bloques por grupo.',
+      'Calcula el promedio y devuelve el resultado.'
+    ]
+  };
+  return {
+    rowTime: 1.15*s, colTime: 0.06*s,
+    rowRead: '100%', colRead: '20%',
+    rowText: 'Escanea filas completas para revisar la condición REGION.',
+    colText: 'Lee solo la columna REGION para filtrar y contar registros.',
+    rowSteps: [
+      'Lee cada fila completa de la tabla.',
+      'Revisa la columna REGION dentro de cada fila.',
+      'Mantiene el resto de columnas aunque no sean necesarias.',
+      'Cuenta las filas que cumplen la condición.',
+      'Entrega el total de registros encontrados.'
+    ],
+    colSteps: [
+      'Lee solamente la columna REGION.',
+      'Busca el valor Norte directamente en esa columna.',
+      'Evita leer ID, YEAR, CATEGORY y AMOUNT.',
+      'Cuenta los registros coincidentes en el bloque.',
+      'Devuelve el total final.'
+    ]
+  };
 }
 
-function buildStagesBar(){
-  const bar = document.getElementById('stages-bar');
-  bar.innerHTML = '';
-  STAGES.forEach((s,i)=>{
-    const d = document.createElement('div');
-    d.className = 'stage-step' + (i===stage ? ' active' : i<stage ? ' done' : '');
-    d.innerHTML = `<span class="s-num">${s.icon}</span>${s.lbl}`;
-    d.onclick = ()=>gotoStage(i);
-    bar.appendChild(d);
+/* Spawn sparkle particle on active cells */
+function spawnParticle(cell, color) {
+  const rect = cell.getBoundingClientRect();
+  const p = document.createElement('div');
+  p.className = 'stream-particle';
+  p.style.cssText = `left:${rect.left + rect.width/2 - 2}px; top:${rect.top + rect.height/2}px; background:${color}; position:fixed;`;
+  document.body.appendChild(p);
+  setTimeout(() => p.remove(), 800);
+}
+
+/* Reset */
+function resetVisuals() {
+  [rowGrid, colGrid].forEach(grid => {
+    [...grid.children].forEach((cell, idx) => {
+      cell.classList.remove('active-row','active-column','faded');
+      if (idx >= headers.length) cell.style.opacity = '1';
+    });
+  });
+  rowProgress.style.width = '0%';
+  colProgress.style.width = '0%';
+  rowScanLine.style.width = '0%';
+  colScanLine.style.width = '0%';
+  rowTimeEl.textContent = '0.00 s';
+  colTimeEl.textContent = '0.00 s';
+  rowReadText.textContent = 'Esperando ejecución...';
+  colReadText.textContent = 'Esperando ejecución...';
+  rowLog.innerHTML = '';
+  colLog.innerHTML = '';
+  chart.data.datasets[0].data = [0, 0];
+  chart.update();
+  rowPanel.style.borderColor = 'rgba(244,63,94,0.1)';
+  colPanel.style.borderColor = 'rgba(16,185,129,0.1)';
+  rowPanel.classList.remove('glow-red');
+  colPanel.classList.remove('glow-green');
+}
+
+/* Highlight row grid */
+let lastActiveRowIndex = -1;
+function highlightRows(progress) {
+  const cells = [...rowGrid.children].slice(headers.length);
+  const cols = headers.length;
+  const totalRows = sampleRows.length;
+  const activeRowIndex = Math.min(Math.floor(progress * totalRows), totalRows - 1);
+
+  if (activeRowIndex !== lastActiveRowIndex) {
+    lastActiveRowIndex = activeRowIndex;
+    // Spawn a particle on active row cells
+    cells.filter((_, i) => Math.floor(i / cols) === activeRowIndex)
+         .forEach(cell => spawnParticle(cell, '#f43f5e'));
+  }
+
+  cells.forEach((cell, i) => {
+    const row = Math.floor(i / cols);
+    cell.classList.remove('active-row','faded');
+    if (row < activeRowIndex)      cell.classList.add('faded');
+    else if (row === activeRowIndex) cell.classList.add('active-row');
   });
 }
 
-function buildPanels(){
-  const el = document.getElementById('r-panels');
-  const st = STAGES[stage];
-  el.innerHTML = R.map((r,i)=>`
-    <div class="r-panel ${i===1?'active-r':''}">
-      <div class="rp-hdr">
-        <div class="rp-circle" style="background:${r.bg};color:${r.col};border:1.5px solid ${r.col}">${r.id}</div>
-        <div class="rp-info">
-          <h4>${r.rid}</h4>
-          <p>${i===1?'Router central de la explicación':'Vecino OSPF'}</p>
-        </div>
-      </div>
-      <div><span class="rp-state st-${st.states[i].replace('-','').replace(' ','')}">${st.states[i]}</span></div>
-      <div class="rp-fields">
-        <div class="rp-field"><span>IP</span><span class="fv">${r.ip}</span></div>
-        <div class="rp-field"><span>Prioridad</span><span class="fv">${r.pri}</span></div>
-        <div class="rp-field"><span>Router ID</span><span class="fv">${r.rid}</span></div>
-        <div class="rp-field"><span>Hello/Dead</span><span class="fv">10s / 40s</span></div>
-      </div>
+/* Highlight column grid */
+let colAnimStarted = false;
+function highlightColumns(progress, type) {
+  const cells = [...colGrid.children].slice(headers.length);
+  const cols = headers.length;
+  const neededCols = type === 'count' ? [3] : type === 'avg' ? [2,4] : [1,4];
+
+  if (progress > 0 && !colAnimStarted) {
+    colAnimStarted = true;
+    cells.filter((_, i) => neededCols.includes(i % cols))
+         .forEach(cell => spawnParticle(cell, '#10b981'));
+  }
+
+  cells.forEach((cell, i) => {
+    const col = i % cols;
+    cell.classList.remove('active-column','faded');
+    if (!neededCols.includes(col)) cell.classList.add('faded');
+    else if (progress > 0)          cell.classList.add('active-column');
+  });
+}
+
+/* Log updater */
+function updateLog(container, steps, progress, engineType) {
+  const visibleSteps = Math.max(1, Math.ceil(progress * steps.length));
+  container.innerHTML = steps.map((step, index) => `
+    <div class="log-line ${index < visibleSteps ? 'active' : ''}">
+      <span class="log-step ${engineType}">${index + 1}</span>
+      <span>${step}</span>
     </div>
   `).join('');
 }
 
-function buildInfo(){
-  const st = STAGES[stage];
-  const card = document.getElementById('info-card');
-  card.className = 'info-card phase-' + stage;
+/* Animate timer */
+function animateTimer({ target, el, bar, scanLine, onProgress, onComplete, logContainer, steps, engineType }) {
+  const start    = performance.now();
+  const duration = Math.max(target * 1000, 350);
 
-  document.getElementById('info-badge').className = 'info-badge ' + st.bdgClass;
-  document.getElementById('info-badge').textContent = 'ESTADO ' + stage + ' — ' + st.lbl;
-  document.getElementById('info-title').textContent = st.title;
-  document.getElementById('info-desc').innerHTML = st.desc;
-  document.getElementById('facts-row').innerHTML = st.facts.map(([k,v]) =>
-    `<div class="fact-chip"><span>${k}:</span>${v}</div>`
-  ).join('');
+  function frame(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    el.textContent = `${(target * progress).toFixed(2)} s`;
+    bar.style.width      = `${progress * 100}%`;
+    scanLine.style.width = `${progress * 100}%`;
+    onProgress(progress);
+    updateLog(logContainer, steps, progress, engineType);
 
-  document.getElementById('prog-fill').style.width = ((stage/(STAGES.length-1))*100) + '%';
-
-  const ex = st.activePacket;
-  if(ex){
-    document.getElementById('ex-badge').textContent = ex.type;
-    document.getElementById('ex-main').textContent = ex.description;
-    document.getElementById('ex-sub').innerHTML = `Paquete activo: <strong>${ex.type}</strong>. Detalle: <strong>${ex.detail}</strong>. Este intercambio representa la función principal de este estado.`;
-    document.getElementById('ex-dir').textContent = ex.direction;
-  } else {
-    document.getElementById('ex-badge').textContent = 'SIN TRÁFICO';
-    document.getElementById('ex-main').textContent = 'Esperando iniciar simulación';
-    document.getElementById('ex-sub').textContent = 'Aquí se mostrará el paquete que está viajando y qué función cumple dentro del establecimiento de vecindad OSPF.';
-    document.getElementById('ex-dir').textContent = '—';
-  }
-}
-
-let logTime = 0;
-const LOG_MSGS = [
-  ()=>`<span class="lm">Ambos routers están en <span class="lr">DOWN</span>. No existe vecindad todavía.</span>`,
-  ()=>`<span class="lm">R2 envía <span class="lh">HELLO</span> a R1 para iniciar descubrimiento.</span>`,
-  ()=>`<span class="lm">R1 responde con <span class="lh">HELLO</span> y se alcanza <span class="lg">2-WAY</span>.</span>`,
-  ()=>`<span class="lm">Se inicia negociación <span class="lp">EXSTART</span> usando <span class="ly">DBD</span>.</span>`,
-  ()=>`<span class="lm">En <span class="ly">EXCHANGE</span> se comparan resúmenes de LSDB.</span>`,
-  ()=>`<span class="lm">R2 usa <span class="lp">LSR</span> para pedir lo que falta.</span>`,
-  ()=>`<span class="lm">R1 responde con <span class="lg">LSU</span>. La relación queda <span class="lg">FULL</span>.</span>`
-];
-
-function addLog(){
-  logTime += Math.round(3 + Math.random()*4);
-  const log = document.getElementById('log');
-  const d = document.createElement('div');
-  d.className = 'log-line';
-  d.innerHTML = `<span class="lt">T+${logTime}s</span>${(LOG_MSGS[stage]||LOG_MSGS[0])()}`;
-  log.appendChild(d);
-  log.scrollTop = log.scrollHeight;
-}
-
-function gotoStage(s){
-  stage = Math.max(0, Math.min(s, STAGES.length-1));
-  animT = 0;
-  lastTs = null;
-  buildStagesBar();
-  buildPanels();
-  buildInfo();
-  draw();
-}
-
-function schedNext(){
-  clearTimeout(autoTimer);
-  if(!playing || stage >= STAGES.length-1) return;
-
-  autoTimer = setTimeout(()=>{
-    if(!playing) return;
-    stage++;
-    animT = 0;
-    lastTs = null;
-    buildStagesBar();
-    buildPanels();
-    buildInfo();
-    addLog();
-    if(stage < STAGES.length-1){
-      schedNext();
+    if (progress < 1) {
+      requestAnimationFrame(frame);
     } else {
-      playing = false;
-      cancelAnimationFrame(raf);
-      updatePlayBtn();
+      updateLog(logContainer, steps, 1, engineType);
+      onComplete();
     }
-  }, STAGE_DUR / spd);
-}
-
-function togglePlay(){
-  if(playing){
-    playing = false;
-    cancelAnimationFrame(raf);
-    clearTimeout(autoTimer);
-  } else {
-    if(stage >= STAGES.length-1) doReset();
-    playing = true;
-    lastTs = null;
-    requestAnimationFrame(loop);
-    schedNext();
-    if(document.getElementById('log').children.length===0) addLog();
   }
-  updatePlayBtn();
+  requestAnimationFrame(frame);
 }
 
-function updatePlayBtn(){
-  const b = document.getElementById('btn-play');
-  b.textContent = playing ? '⏸ Pausar' : '▶ ' + (stage===0 ? 'Iniciar' : 'Reanudar');
-  b.className = 'btn-main ' + (playing ? 'btn-pause' : 'btn-play');
-}
+/* Animated KPI counter */
+function animateCounter(el, targetText, color) {
+  const num = parseFloat(targetText);
+  if (isNaN(num)) { el.textContent = targetText; return; }
+  const isPercent = targetText.includes('%');
+  const isMult    = targetText.includes('×');
+  const start = performance.now();
+  const duration = 600;
 
-function doReset(){
-  playing = false;
-  cancelAnimationFrame(raf);
-  clearTimeout(autoTimer);
-  stage = 0;
-  animT = 0;
-  logTime = 0;
-  lastTs = null;
-  document.getElementById('log').innerHTML = '';
-  buildStagesBar();
-  buildPanels();
-  buildInfo();
-  draw();
-  updatePlayBtn();
-}
-
-function doStep(){
-  if(playing){
-    playing = false;
-    cancelAnimationFrame(raf);
-    clearTimeout(autoTimer);
-    updatePlayBtn();
+  function tick(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const val = num * ease;
+    el.textContent = isPercent ? `${Math.round(val)}%` : isMult ? `${val.toFixed(1)}×` : `${val.toFixed(1)}×`;
+    if (p < 1) requestAnimationFrame(tick);
+    else {
+      el.textContent = targetText;
+      el.classList.add('result-flash');
+      setTimeout(() => el.classList.remove('result-flash'), 500);
+    }
   }
-  if(stage < STAGES.length-1){
-    stage++;
-    animT = 0;
-    lastTs = null;
-    buildStagesBar();
-    buildPanels();
-    buildInfo();
-    addLog();
-    draw();
-  }
+  requestAnimationFrame(tick);
 }
 
-function setSpeed(v){
-  spd = parseFloat(v);
-  document.getElementById('spd-lbl').textContent = v + '×';
-  if(playing){
-    clearTimeout(autoTimer);
-    schedNext();
-  }
-}
+/* Run */
+runBtn.addEventListener('click', () => {
+  resetVisuals();
+  colAnimStarted = false;
+  lastActiveRowIndex = -1;
+  updateSql();
 
-buildStagesBar();
-buildPanels();
-buildInfo();
-draw();
-updatePlayBtn();
+  const volume   = parseInt(dataVolume.value, 10);
+  const type     = queryType.value;
+  const scenario = getScenario(volume, type);
+  const speedup  = (scenario.rowTime / scenario.colTime).toFixed(1);
+
+  rowReadText.textContent = scenario.rowText;
+  colReadText.textContent = scenario.colText;
+  updateLog(rowLog, scenario.rowSteps, 0.01, 'row');
+  updateLog(colLog, scenario.colSteps, 0.01, 'col');
+
+  animateTimer({
+    target: scenario.rowTime, el: rowTimeEl,
+    bar: rowProgress, scanLine: rowScanLine,
+    logContainer: rowLog, steps: scenario.rowSteps,
+    engineType: 'row',
+    onProgress: p => highlightRows(p),
+    onComplete: () => {
+      chart.data.datasets[0].data[0] = scenario.rowTime * 1000;
+      chart.update();
+      rowPanel.classList.add('glow-red');
+      rowPanel.style.borderColor = 'rgba(244,63,94,0.3)';
+      animateCounter(rowReadKpi, scenario.rowRead, '#f43f5e');
+    }
+  });
+
+  animateTimer({
+    target: scenario.colTime, el: colTimeEl,
+    bar: colProgress, scanLine: colScanLine,
+    logContainer: colLog, steps: scenario.colSteps,
+    engineType: 'col',
+    onProgress: p => highlightColumns(p, type),
+    onComplete: () => {
+      chart.data.datasets[0].data[1] = scenario.colTime * 1000;
+      chart.update();
+      colPanel.classList.add('glow-green');
+      colPanel.style.borderColor = 'rgba(16,185,129,0.3)';
+      animateCounter(colReadKpi, scenario.colRead, '#10b981');
+      animateCounter(speedupKpi, `${speedup}×`, '#3b82f6');
+    }
+  });
+});
 </script>
 </body>
 </html>
