@@ -1,1115 +1,616 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simulador OLAP: Row-based vs Columnar</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --red: #f43f5e;
-      --emerald: #10b981;
-      --blue: #3b82f6;
-      --cyan: #06b6d4;
-      --bg: #050a14;
-      --surface: rgba(10,18,35,0.85);
-      --border: rgba(148,163,184,0.10);
-      --glow-red: rgba(244,63,94,0.18);
-      --glow-green: rgba(16,185,129,0.18);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCNP ENCOR 350-401 · Full Practice · 200Q</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=Barlow:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080a;--surf:#0d0f12;--card:#111418;--border:#1c2028;--b2:#2a303c;
+  --t1:#00e5ff;--t2:#39ff14;--t3:#ff6b1a;--t4:#c084fc;--t5:#f43f5e;--t6:#fbbf24;--t7:#34d399;--t8:#60a5fa;
+  --ok:#39ff14;--ko:#f43f5e;--text:#b0bec5;--head:#eceff1;--muted:#4a5568;
+  --mono:'IBM Plex Mono',monospace;--sans:'Barlow',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,229,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.018) 1px,transparent 1px);
+  background-size:52px 52px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(0,229,255,.055) 0%,transparent 55%);
+  pointer-events:none;z-index:0}
 
-    * { box-sizing: border-box; }
+/* ── HEADER ── */
+header{position:relative;z-index:10;text-align:center;padding:52px 24px 32px;border-bottom:1px solid var(--border)}
+.chip{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;
+  color:var(--t1);border:1px solid rgba(0,229,255,.35);padding:5px 16px;border-radius:2px;
+  margin-bottom:18px;letter-spacing:3px;animation:glow 3s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,0)}50%{box-shadow:0 0 20px 3px rgba(0,229,255,.2)}}
+.chip::before{content:'▶';font-size:7px}
+h1{font-family:var(--sans);font-weight:900;font-size:clamp(24px,5vw,52px);
+  color:var(--head);line-height:1.05;letter-spacing:-1.5px}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--t1),var(--t2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.5px}
+.domain-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:18px}
+.dc{font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:2px;letter-spacing:1.2px}
 
-    body {
-      font-family: 'Syne', sans-serif;
-      background: var(--bg);
-      min-height: 100vh;
-      overflow-x: hidden;
-      position: relative;
-    }
+/* ── STICKY ── */
+.sbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:9px 24px;background:rgba(7,8,10,.94);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.st{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px}
+.st-l{color:var(--muted)}.st-v{font-weight:700}
+#sv-a{color:var(--t1)}#sv-ok{color:var(--t2)}#sv-ko{color:var(--t5)}
+.pw{flex:1;min-width:60px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+#pb{height:100%;width:0%;background:linear-gradient(90deg,var(--t1),var(--t2));border-radius:2px;transition:width .4s ease}
+.btns{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.btn-f{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:3px 8px;border-radius:2px;
+  cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s}
+.btn-f:hover,.btn-f.active{border-color:var(--t1);color:var(--t1);background:rgba(0,229,255,.08)}
+.btn-shuf{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:3px 10px;border-radius:2px;
+  cursor:pointer;border:1px solid var(--t3);background:rgba(255,107,26,.08);color:var(--t3);transition:all .15s}
+.btn-shuf:hover{background:var(--t3);color:var(--bg)}
 
-    /* ── Animated background mesh ── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 10% 0%, rgba(59,130,246,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 90% 10%, rgba(16,185,129,0.10) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 60% at 50% 100%, rgba(244,63,94,0.07) 0%, transparent 55%);
-      pointer-events: none;
-      z-index: 0;
-    }
+/* ── MAIN ── */
+main{position:relative;z-index:5;max-width:940px;margin:0 auto;padding:32px 20px 80px}
 
-    /* ── Floating particles canvas ── */
-    #particles-canvas {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      opacity: 0.5;
-    }
+/* ── CARD ── */
+.q-card{background:var(--card);border:1px solid var(--border);border-radius:6px;
+  margin-bottom:14px;overflow:hidden;animation:cin .3s ease both;transition:border-color .25s,box-shadow .25s}
+@keyframes cin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.q-card:hover{border-color:var(--b2)}
+.q-card.ok{border-color:rgba(57,255,20,.5);box-shadow:0 0 12px rgba(57,255,20,.06)}
+.q-card.ko{border-color:rgba(244,63,94,.45);box-shadow:0 0 12px rgba(244,63,94,.06)}
+.q-card.hidden{display:none}
 
-    .content-wrap {
-      position: relative;
-      z-index: 1;
-    }
+.q-head{display:flex;align-items:flex-start;gap:10px;padding:16px 20px 12px;border-bottom:1px solid var(--border)}
+.q-num{flex-shrink:0;font-family:var(--mono);font-size:9px;color:var(--muted);border:1px solid var(--border);padding:3px 7px;border-radius:2px;margin-top:2px}
+.q-tag{flex-shrink:0;font-family:var(--mono);font-size:9px;letter-spacing:1.2px;padding:3px 8px;border-radius:2px;margin-top:1px;white-space:nowrap}
+.q-text{font-size:14px;color:var(--head);font-weight:600;line-height:1.5}
+.q-text code{font-family:var(--mono);font-size:12px;background:rgba(0,229,255,.08);color:var(--t1);padding:1px 5px;border-radius:3px}
+.q-text pre{font-family:var(--mono);font-size:11.5px;background:rgba(0,0,0,.4);color:#a5f3fc;
+  padding:10px 14px;border-radius:4px;margin-top:8px;border-left:2px solid var(--t1);
+  overflow-x:auto;white-space:pre-wrap;line-height:1.5}
 
-    /* ── Glass card ── */
-    .glass {
-      background: var(--surface);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--border);
-      box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
-    }
+.q-opts{padding:10px 20px 14px;display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--surf);
+  border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:all .18s;
+  text-align:left;font-family:var(--sans);font-size:13.5px;color:var(--text);width:100%}
+.opt:hover:not(:disabled){border-color:var(--t1);background:rgba(0,229,255,.04);color:var(--head)}
+.opt:disabled{cursor:default}
+.opt-k{flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--muted);
+  border:1px solid var(--border);padding:1px 6px;border-radius:2px;margin-top:1px}
+.opt.oc{background:rgba(57,255,20,.07);border-color:var(--ok);color:var(--ok)}
+.opt.oc .opt-k{color:var(--ok);border-color:var(--ok)}
+.opt.ow{background:rgba(244,63,94,.07);border-color:var(--ko);color:var(--ko)}
+.opt.ow .opt-k{color:var(--ko);border-color:var(--ko)}
 
-    /* ── Neon glow utilities ── */
-    .glow-red  { box-shadow: 0 0 24px rgba(244,63,94,0.35), 0 0 60px rgba(244,63,94,0.12); }
-    .glow-green{ box-shadow: 0 0 24px rgba(16,185,129,0.35), 0 0 60px rgba(16,185,129,0.12); }
-    .glow-blue { box-shadow: 0 0 24px rgba(59,130,246,0.35), 0 0 60px rgba(59,130,246,0.12); }
+.exp{display:none;margin:0 20px 14px;padding:11px 14px;
+  background:rgba(0,229,255,.04);border-left:2px solid var(--t1);
+  border-radius:0 4px 4px 0;font-family:var(--mono);font-size:11.5px;
+  color:#607d8b;line-height:1.65;animation:fin .25s ease}
+@keyframes fin{from{opacity:0}to{opacity:1}}
+.exp.show{display:block}
+.exp strong{color:var(--t2)}
+.exp .ref{color:var(--t6);font-size:10px}
 
-    /* ── Header badge ── */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.3rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-family: 'Space Mono', monospace;
-      letter-spacing: 0.05em;
-      border: 1px solid rgba(148,163,184,0.22);
-      background: rgba(30,41,59,0.6);
-      color: #94a3b8;
-    }
+/* ── RESULT ── */
+#result{display:none;text-align:center;padding:60px 32px;background:var(--card);
+  border:1px solid var(--border);border-radius:10px;margin-top:20px;animation:cin .5s ease}
+#result.show{display:block}
+.r-pct{font-size:clamp(80px,14vw,120px);font-weight:900;line-height:1;
+  background:linear-gradient(130deg,var(--t1),var(--t2));-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text}
+.r-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:3px;margin-top:6px}
+.r-msg{margin-top:22px;font-size:18px;font-weight:700;color:var(--head)}
+.r-detail{margin-top:6px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.r-grid{display:flex;justify-content:center;gap:40px;margin-top:28px;flex-wrap:wrap}
+.r-cell{text-align:center}
+.r-n{font-size:32px;font-weight:900}.r-l{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:2px}
+.r-domain-breakdown{margin-top:36px;text-align:left;max-width:500px;margin-left:auto;margin-right:auto}
+.r-drow{display:flex;align-items:center;gap:12px;margin-top:10px;font-family:var(--mono);font-size:11px}
+.r-dname{width:140px;color:var(--muted)}
+.r-dbar-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.r-dbar{height:100%;border-radius:3px;transition:width .8s ease}
+.r-dpct{width:40px;text-align:right;color:var(--head)}
+.btn-retry{margin-top:36px;display:inline-block;font-family:var(--mono);font-size:12px;
+  letter-spacing:2px;padding:14px 36px;background:transparent;color:var(--t1);
+  border:1px solid var(--t1);border-radius:3px;cursor:pointer;transition:all .2s}
+.btn-retry:hover{background:var(--t1);color:var(--bg);box-shadow:0 0 24px rgba(0,229,255,.4)}
 
-    /* ── SQL box with animated cursor ── */
-    .sql-box {
-      background: #020617;
-      border: 1px solid rgba(59,130,246,0.25);
-      border-radius: 1rem;
-      position: relative;
-      overflow: hidden;
-    }
-    .sql-box::before {
-      content: '';
-      position: absolute;
-      top: 0; left: -100%;
-      width: 60%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(59,130,246,0.06), transparent);
-      animation: shimmerSQL 3s infinite;
-    }
-    @keyframes shimmerSQL {
-      0%   { left: -60%; }
-      100% { left: 120%; }
-    }
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
 
-    /* ── Scan area ── */
-    .scan-area {
-      position: relative;
-      overflow: hidden;
-      border-radius: 1rem;
-      background: linear-gradient(180deg, rgba(10,18,35,0.97), rgba(2,6,23,0.97));
-      border: 1px solid rgba(148,163,184,0.10);
-      min-height: 265px;
-    }
-
-    /* ── Scan beam ── */
-    .scan-line {
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 0%;
-      pointer-events: none;
-      z-index: 2;
-      transition: width 0.05s linear;
-    }
-    .scan-line-row {
-      background: linear-gradient(90deg,
-        transparent,
-        rgba(244,63,94,0.05),
-        rgba(244,63,94,0.25),
-        rgba(244,63,94,0.05),
-        transparent);
-    }
-    .scan-line-col {
-      background: linear-gradient(90deg,
-        transparent,
-        rgba(16,185,129,0.05),
-        rgba(16,185,129,0.25),
-        rgba(16,185,129,0.05),
-        transparent);
-    }
-
-    /* ── Data grid ── */
-    .table-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 5px;
-      padding: 16px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .cell {
-      height: 28px;
-      border-radius: 0.45rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #94a3b8;
-      border: 1px solid rgba(148,163,184,0.08);
-      background: rgba(30,41,59,0.4);
-      transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-    }
-
-    .header-cell {
-      background: rgba(37,99,235,0.22);
-      color: #93c5fd;
-      border-color: rgba(59,130,246,0.2);
-      font-size: 0.6rem;
-      letter-spacing: 0.08em;
-    }
-
-    .active-row {
-      background: rgba(244,63,94,0.28) !important;
-      color: #fda4af !important;
-      border-color: rgba(244,63,94,0.3) !important;
-      transform: scaleY(1.05);
-      box-shadow: 0 0 8px rgba(244,63,94,0.3);
-    }
-
-    .active-column {
-      background: rgba(16,185,129,0.28) !important;
-      color: #6ee7b7 !important;
-      border-color: rgba(16,185,129,0.3) !important;
-      transform: scaleX(1.05);
-      box-shadow: 0 0 8px rgba(16,185,129,0.3);
-    }
-
-    .faded { opacity: 0.18; }
-
-    /* ── Progress bar ── */
-    .progress-track {
-      background: rgba(30,41,59,0.6);
-      border-radius: 999px;
-      height: 6px;
-      overflow: hidden;
-      position: relative;
-    }
-    .progress-fill {
-      height: 100%;
-      border-radius: 999px;
-      transition: width 0.05s linear;
-      position: relative;
-      overflow: hidden;
-    }
-    .progress-fill::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%);
-      animation: shimmerBar 1.5s infinite;
-    }
-    @keyframes shimmerBar {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(200%); }
-    }
-    .fill-red   { background: linear-gradient(90deg, #be123c, #f43f5e, #fb7185); }
-    .fill-green { background: linear-gradient(90deg, #059669, #10b981, #34d399); }
-
-    /* ── Engine log ── */
-    .engine-log {
-      background: rgba(2,6,23,0.9);
-      border: 1px solid rgba(148,163,184,0.08);
-      border-radius: 1rem;
-      padding: 1rem;
-      min-height: 140px;
-    }
-
-    .log-line {
-      display: flex;
-      gap: 0.55rem;
-      align-items: flex-start;
-      color: #94a3b8;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.72rem;
-      line-height: 1.4rem;
-      padding: 0.18rem 0;
-      opacity: 0;
-      transform: translateX(-8px);
-      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .log-line.active {
-      opacity: 1;
-      transform: translateX(0);
-    }
-
-    .log-step {
-      min-width: 1.4rem;
-      height: 1.4rem;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: white;
-      flex-shrink: 0;
-      margin-top: 0.05rem;
-    }
-    .log-step.row { background: linear-gradient(135deg,#be123c,#f43f5e); box-shadow: 0 0 6px rgba(244,63,94,0.5); }
-    .log-step.col { background: linear-gradient(135deg,#059669,#10b981); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
-
-    /* ── KPI cards ── */
-    .kpi-card {
-      background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(2,6,23,0.95));
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1rem;
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .kpi-card:hover { transform: translateY(-2px); }
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 70%);
-      pointer-events: none;
-    }
-
-    /* ── Big time display ── */
-    .time-display {
-      font-family: 'Space Mono', monospace;
-      font-size: 2.8rem;
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: -0.02em;
-      transition: text-shadow 0.3s ease;
-    }
-    .time-display.row-time  { color: #f43f5e; text-shadow: 0 0 20px rgba(244,63,94,0.4); }
-    .time-display.col-time  { color: #10b981; text-shadow: 0 0 20px rgba(16,185,129,0.4); }
-
-    /* ── Speedup badge ── */
-    .speedup-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.5rem 1rem;
-      border-radius: 999px;
-      font-family: 'Space Mono', monospace;
-      font-size: 1.1rem;
-      font-weight: 700;
-      border: 1px solid rgba(59,130,246,0.3);
-      background: rgba(59,130,246,0.12);
-      color: #93c5fd;
-      transition: all 0.3s ease;
-    }
-
-    /* ── Run button ── */
-    .run-btn {
-      position: relative;
-      overflow: hidden;
-      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-      border: none;
-      border-radius: 1rem;
-      color: white;
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 0.95rem;
-      padding: 0.75rem 1.75rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      letter-spacing: 0.02em;
-    }
-    .run-btn:hover {
-      background: linear-gradient(135deg, #2563eb, #60a5fa);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(59,130,246,0.4);
-    }
-    .run-btn:active { transform: scale(0.98); }
-    .run-btn::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -75%;
-      width: 50%;
-      height: 200%;
-      background: rgba(255,255,255,0.15);
-      transform: skewX(-20deg);
-      transition: left 0.5s ease;
-    }
-    .run-btn:hover::before { left: 150%; }
-
-    /* ── Animated title gradient ── */
-    .title-gradient {
-      background: linear-gradient(90deg, #f43f5e, #fb923c, #facc15, #10b981, #3b82f6);
-      background-size: 300% 100%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: gradientFlow 6s ease infinite;
-    }
-    @keyframes gradientFlow {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    /* ── Pulse ring on KPI ── */
-    @keyframes pulseRing {
-      0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); }
-      70%  { box-shadow: 0 0 0 12px transparent; }
-      100% { box-shadow: 0 0 0 0 transparent; }
-    }
-    .pulse-ring { animation: pulseRing 2.5s infinite; }
-
-    /* ── Section reveal on load ── */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      animation: revealUp 0.6s forwards;
-    }
-    @keyframes revealUp {
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .reveal-d1 { animation-delay: 0.05s; }
-    .reveal-d2 { animation-delay: 0.15s; }
-    .reveal-d3 { animation-delay: 0.25s; }
-    .reveal-d4 { animation-delay: 0.35s; }
-
-    /* ── Divider ── */
-    .neon-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(59,130,246,0.4), rgba(16,185,129,0.4), transparent);
-      margin: 0.5rem 0;
-    }
-
-    /* ── Select styling ── */
-    select {
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      cursor: pointer;
-    }
-    select:focus { outline: none; border-color: var(--blue); }
-
-    /* ── Result flash ── */
-    @keyframes resultFlash {
-      0%   { transform: scale(1); }
-      30%  { transform: scale(1.08); }
-      60%  { transform: scale(0.97); }
-      100% { transform: scale(1); }
-    }
-    .result-flash { animation: resultFlash 0.5s ease; }
-
-    /* ── Tooltip ── */
-    .tooltip-wrap { position: relative; }
-    .tooltip-wrap:hover .tooltip-box { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .tooltip-box {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%) translateY(6px);
-      background: rgba(15,23,42,0.97);
-      border: 1px solid rgba(148,163,184,0.2);
-      border-radius: 0.6rem;
-      padding: 0.5rem 0.75rem;
-      font-size: 0.72rem;
-      white-space: nowrap;
-      color: #cbd5e1;
-      opacity: 0;
-      transition: all 0.2s ease;
-      pointer-events: none;
-      z-index: 100;
-    }
-
-    /* ── Particle data-stream ── */
-    .stream-particle {
-      position: absolute;
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 3;
-      animation: streamDown 0.8s ease forwards;
-    }
-    @keyframes streamDown {
-      0%   { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(30px) scale(0.3); }
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 99px; }
-  </style>
+@media(max-width:600px){
+  .sbar{padding:8px 12px;gap:8px}
+  .btns{display:none}
+  .q-head{padding:12px 14px 10px}
+  .q-opts{padding:8px 14px 12px}
+  .exp{margin:0 14px 12px}
+}
+</style>
 </head>
-<body class="text-slate-100">
+<body>
+<header>
+  <div class="chip">CCNP ENCOR 350-401 v1.2 · FULL EXAM SIMULATION</div>
+  <h1>200 Practice Questions<br><em>All Domains · Randomized</em></h1>
+  <p class="sub">// Architecture · Virtualization · Infrastructure · Assurance · Security · Automation · AI</p>
+  <div class="domain-chips" id="dchips"></div>
+</header>
 
-<canvas id="particles-canvas"></canvas>
-
-<div class="content-wrap max-w-7xl mx-auto px-4 py-8 md:py-12">
-
-  <!-- ═══ HEADER ═══ -->
-  <header class="mb-10 reveal reveal-d1">
-    <div class="glass rounded-3xl p-6 md:p-8">
-      <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
-        <div>
-          <div class="badge mb-4">
-            <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-            PF-3858 · Almacenes de Datos y OLAP · UCR
-          </div>
-          <h1 class="text-3xl md:text-5xl font-black tracking-tight mb-2 leading-tight">
-            Simulador visual:
-            <br>
-            <span class="text-rose-400">Row-based</span>
-            <span class="text-slate-500 mx-2">vs</span>
-            <span class="text-emerald-400">Columnar</span>
-          </h1>
-          <div class="neon-divider my-3 max-w-md"></div>
-          <p class="text-slate-400 max-w-2xl text-sm md:text-base leading-relaxed">
-            El motor orientado a <span class="text-rose-300 font-semibold">filas</span> escanea registros completos.
-            El motor <span class="text-emerald-300 font-semibold">columnar</span> accede solo a las columnas requeridas.
-            Observa la diferencia en tiempo real.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 min-w-[300px]">
-          <div class="kpi-card">
-            <div class="text-slate-500 text-xs uppercase tracking-widest mb-1 font-mono">Consulta</div>
-            <div class="text-lg font-bold text-blue-300">SUM + filtro</div>
-          </div>
-          <div class="kpi-card">
-            <div class="text-slate-500 text-xs uppercase tracking-widest mb-1 font-mono">Objetivo</div>
-            <div class="text-lg font-bold text-emerald-300">OLAP analytics</div>
-          </div>
-          <div class="kpi-card col-span-2 pulse-ring" style="border-color:rgba(59,130,246,0.2)">
-            <div class="text-slate-500 text-xs uppercase tracking-widest mb-1 font-mono">Principio</div>
-            <div class="text-base font-bold text-white">Leer menos datos = responder más rápido ⚡</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- ═══ CONTROLS ═══ -->
-  <section class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6 reveal reveal-d2">
-    <div class="glass rounded-3xl p-5 xl:col-span-2">
-      <div class="flex flex-col md:flex-row md:items-end gap-4">
-        <div class="flex-1">
-          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-2 font-mono">Volumen de datos</label>
-          <select id="dataVolume" class="w-full rounded-xl bg-slate-900/80 border border-slate-700/60 px-4 py-3 text-white text-sm focus:border-blue-500 transition">
-            <option value="100000">100 mil filas</option>
-            <option value="1000000">1 millón de filas</option>
-            <option value="5000000" selected>5 millones de filas</option>
-            <option value="10000000">10 millones de filas</option>
-          </select>
-        </div>
-        <div class="flex-1">
-          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-2 font-mono">Tipo de consulta</label>
-          <select id="queryType" class="w-full rounded-xl bg-slate-900/80 border border-slate-700/60 px-4 py-3 text-white text-sm focus:border-emerald-500 transition">
-            <option value="sum">SUM(amount) con filtro por año</option>
-            <option value="avg">AVG(amount) agrupado por categoría</option>
-            <option value="count">COUNT(*) con filtro por región</option>
-          </select>
-        </div>
-        <div>
-          <button id="runDemo" class="run-btn w-full md:w-auto whitespace-nowrap">
-            ▶ Ejecutar simulación
-          </button>
-        </div>
-      </div>
-
-      <div class="sql-box p-4 mt-5">
-        <div class="text-xs uppercase tracking-widest text-slate-500 mb-2 font-mono flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          Consulta simulada
-        </div>
-        <code id="sqlText" class="text-emerald-300 text-sm md:text-base font-mono break-words"></code>
-        <span class="inline-block w-2 h-4 bg-emerald-400 ml-1 align-middle" style="animation: blink 1s steps(1) infinite"></span>
-      </div>
-      <style>@keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }</style>
-    </div>
-
-    <div class="glass rounded-3xl p-5">
-      <div class="text-sm font-bold text-slate-200 mb-4 uppercase tracking-wider">¿Qué demuestra esto?</div>
-      <div class="space-y-4">
-        <div class="flex gap-3 items-start">
-          <div class="w-2 h-2 rounded-full bg-rose-400 mt-2 flex-shrink-0 shadow-lg shadow-rose-500/40"></div>
-          <p class="text-sm text-slate-400 leading-relaxed">
-            <span class="text-rose-300 font-bold">Row-based:</span> lee filas completas aunque use pocas columnas — mucho I/O innecesario.
-          </p>
-        </div>
-        <div class="flex gap-3 items-start">
-          <div class="w-2 h-2 rounded-full bg-emerald-400 mt-2 flex-shrink-0 shadow-lg shadow-emerald-500/40"></div>
-          <p class="text-sm text-slate-400 leading-relaxed">
-            <span class="text-emerald-300 font-bold">Columnar:</span> accede solo a las columnas necesarias — mejor compresión y vectorización.
-          </p>
-        </div>
-        <div class="flex gap-3 items-start">
-          <div class="w-2 h-2 rounded-full bg-blue-400 mt-2 flex-shrink-0 shadow-lg shadow-blue-500/40"></div>
-          <p class="text-sm text-slate-400 leading-relaxed">
-            <span class="text-blue-300 font-bold">OLAP:</span> consultas analíticas sobre millones de filas — el diseño columnar es ideal.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ ENGINES ═══ -->
-  <section class="grid grid-cols-1 2xl:grid-cols-2 gap-5 mb-6">
-
-    <!-- Row engine -->
-    <div id="row-panel" class="glass rounded-3xl p-5 reveal reveal-d3" style="border-color: rgba(244,63,94,0.1)">
-      <div class="flex items-start justify-between mb-4">
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <div class="w-3 h-3 rounded-full bg-rose-500 shadow-lg shadow-rose-500/60 animate-pulse"></div>
-            <h2 class="text-xl font-black text-rose-400 tracking-tight">Motor orientado a filas</h2>
-          </div>
-          <p class="text-xs text-slate-500 font-mono">Escanea TODOS los campos de cada registro</p>
-        </div>
-        <div class="text-right">
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">Tiempo</div>
-          <div id="rowTime" class="time-display row-time">0.00 s</div>
-        </div>
-      </div>
-
-      <div class="scan-area mb-4">
-        <div id="rowScanLine" class="scan-line scan-line-row"></div>
-        <div id="rowGrid" class="table-grid"></div>
-      </div>
-
-      <div class="progress-track mb-3">
-        <div id="rowProgress" class="progress-fill fill-red" style="width:0%"></div>
-      </div>
-      <div id="rowReadText" class="text-xs text-slate-500 font-mono mb-4">Esperando ejecución...</div>
-
-      <div class="engine-log" style="border-color: rgba(244,63,94,0.08)">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest">Engine log</div>
-          <span class="badge" style="color:#fda4af; border-color:rgba(244,63,94,0.2)">Row engine</span>
-        </div>
-        <div id="rowLog" class="space-y-1"></div>
-      </div>
-    </div>
-
-    <!-- Column engine -->
-    <div id="col-panel" class="glass rounded-3xl p-5 reveal reveal-d3" style="border-color: rgba(16,185,129,0.1)">
-      <div class="flex items-start justify-between mb-4">
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/60 animate-pulse"></div>
-            <h2 class="text-xl font-black text-emerald-400 tracking-tight">Motor columnar</h2>
-          </div>
-          <p class="text-xs text-slate-500 font-mono">Lee ÚNICAMENTE las columnas requeridas</p>
-        </div>
-        <div class="text-right">
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">Tiempo</div>
-          <div id="colTime" class="time-display col-time">0.00 s</div>
-        </div>
-      </div>
-
-      <div class="scan-area mb-4">
-        <div id="colScanLine" class="scan-line scan-line-col"></div>
-        <div id="colGrid" class="table-grid"></div>
-      </div>
-
-      <div class="progress-track mb-3">
-        <div id="colProgress" class="progress-fill fill-green" style="width:0%"></div>
-      </div>
-      <div id="colReadText" class="text-xs text-slate-500 font-mono mb-4">Esperando ejecución...</div>
-
-      <div class="engine-log" style="border-color: rgba(16,185,129,0.08)">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest">Engine log</div>
-          <span class="badge" style="color:#6ee7b7; border-color:rgba(16,185,129,0.2)">Column engine</span>
-        </div>
-        <div id="colLog" class="space-y-1"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ RESULTS ═══ -->
-  <section class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-10 reveal reveal-d4">
-    <div class="glass rounded-3xl p-5 xl:col-span-2">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h3 class="text-xl font-black text-white">Comparación de rendimiento</h3>
-          <p class="text-xs text-slate-500 font-mono mt-1">Tiempo estimado de respuesta · misma consulta</p>
-        </div>
-        <span class="badge">Simulación educativa</span>
-      </div>
-      <div class="bg-white/[0.03] rounded-2xl p-4 h-[300px] border border-white/5">
-        <canvas id="performanceChart"></canvas>
-      </div>
-    </div>
-
-    <div class="glass rounded-3xl p-5">
-      <h3 class="text-xl font-black mb-4">Resumen técnico</h3>
-      <div class="space-y-3">
-        <div class="kpi-card tooltip-wrap" style="border-color:rgba(244,63,94,0.15)">
-          <div class="tooltip-box">Porcentaje de datos leídos de cada fila</div>
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">I/O — Row-based</div>
-          <div id="rowReadKpi" class="text-2xl font-black text-rose-400 font-mono">100%</div>
-          <div class="text-xs text-slate-500 mt-1">todos los campos por cada registro</div>
-        </div>
-        <div class="kpi-card tooltip-wrap" style="border-color:rgba(16,185,129,0.15)">
-          <div class="tooltip-box">Solo columnas usadas en la consulta</div>
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">I/O — Columnar</div>
-          <div id="colReadKpi" class="text-2xl font-black text-emerald-400 font-mono">20%</div>
-          <div class="text-xs text-slate-500 mt-1">solo columnas necesarias</div>
-        </div>
-        <div class="kpi-card tooltip-wrap" style="border-color:rgba(59,130,246,0.15)">
-          <div class="tooltip-box">Mejora relativa del enfoque columnar</div>
-          <div class="text-xs text-slate-500 font-mono uppercase tracking-widest mb-1">Speedup estimado</div>
-          <div id="speedupKpi" class="text-2xl font-black text-blue-400 font-mono">0.0×</div>
-          <div class="text-xs text-slate-500 mt-1">mejora relativa · enfoque columnar</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <footer class="text-center text-slate-600 text-xs pb-8 font-mono">
-    Demo educativa · Almacenamiento por filas vs columnar · OLAP Analytics
-  </footer>
+<div class="sbar">
+  <div class="st"><span class="st-l">ANS</span>&nbsp;<span class="st-v" id="sv-a">0</span><span class="st-l">/200</span></div>
+  <div class="st"><span class="st-l">✓</span>&nbsp;<span class="st-v" id="sv-ok">0</span></div>
+  <div class="st"><span class="st-l">✗</span>&nbsp;<span class="st-v" id="sv-ko">0</span></div>
+  <div class="pw"><div id="pb"></div></div>
+  <div class="btns" id="filter-btns"></div>
+  <button class="btn-shuf" onclick="shuffleAndRestart()">⇌ SHUFFLE</button>
 </div>
 
+<main id="qmain"></main>
+
 <script>
-/* ─── Particles background ─── */
-(function() {
-  const canvas = document.getElementById('particles-canvas');
-  const ctx = canvas.getContext('2d');
-  let particles = [];
-
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
-  const colors = ['rgba(59,130,246,', 'rgba(16,185,129,', 'rgba(244,63,94,', 'rgba(6,182,212,'];
-
-  for (let i = 0; i < 55; i++) {
-    particles.push({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      r: Math.random() * 1.5 + 0.4,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      alpha: Math.random() * 0.4 + 0.1
-    });
-  }
-
-  function drawParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = p.color + p.alpha + ')';
-      ctx.fill();
-      p.x += p.vx;
-      p.y += p.vy;
-      if (p.x < 0) p.x = canvas.width;
-      if (p.x > canvas.width)  p.x = 0;
-      if (p.y < 0) p.y = canvas.height;
-      if (p.y > canvas.height) p.y = 0;
-    });
-    requestAnimationFrame(drawParticles);
-  }
-  drawParticles();
-})();
-
-/* ─── App logic ─── */
-const headers    = ['ID', 'YEAR', 'CATEGORY', 'REGION', 'AMOUNT'];
-const sampleRows = [
-  ['1','2024','A','Norte','120'],
-  ['2','2023','B','Sur','80'],
-  ['3','2024','A','Este','210'],
-  ['4','2022','C','Oeste','95'],
-  ['5','2024','B','Norte','150'],
-  ['6','2023','A','Sur','60'],
-  ['7','2024','C','Este','310'],
-  ['8','2024','B','Oeste','170']
-];
-
-const runBtn      = document.getElementById('runDemo');
-const dataVolume  = document.getElementById('dataVolume');
-const queryType   = document.getElementById('queryType');
-const sqlText     = document.getElementById('sqlText');
-const rowGrid     = document.getElementById('rowGrid');
-const colGrid     = document.getElementById('colGrid');
-const rowTimeEl   = document.getElementById('rowTime');
-const colTimeEl   = document.getElementById('colTime');
-const rowProgress = document.getElementById('rowProgress');
-const colProgress = document.getElementById('colProgress');
-const rowReadText = document.getElementById('rowReadText');
-const colReadText = document.getElementById('colReadText');
-const rowScanLine = document.getElementById('rowScanLine');
-const colScanLine = document.getElementById('colScanLine');
-const rowReadKpi  = document.getElementById('rowReadKpi');
-const colReadKpi  = document.getElementById('colReadKpi');
-const speedupKpi  = document.getElementById('speedupKpi');
-const rowLog      = document.getElementById('rowLog');
-const colLog      = document.getElementById('colLog');
-const rowPanel    = document.getElementById('row-panel');
-const colPanel    = document.getElementById('col-panel');
-
-function buildGrid(container) {
-  container.innerHTML = '';
-  headers.forEach(h => {
-    const c = document.createElement('div');
-    c.className = 'cell header-cell';
-    c.textContent = h;
-    container.appendChild(c);
-  });
-  sampleRows.forEach(row => row.forEach(v => {
-    const c = document.createElement('div');
-    c.className = 'cell';
-    c.textContent = v;
-    container.appendChild(c);
-  }));
-}
-buildGrid(rowGrid);
-buildGrid(colGrid);
-
-/* Chart.js */
-const chartCanvas = document.getElementById('performanceChart').getContext('2d');
-const chart = new Chart(chartCanvas, {
-  type: 'bar',
-  data: {
-    labels: ['Motor por filas', 'Motor columnar'],
-    datasets: [{
-      label: 'Tiempo (ms)',
-      data: [0, 0],
-      backgroundColor: [
-        'rgba(244,63,94,0.7)',
-        'rgba(16,185,129,0.7)'
-      ],
-      borderColor: ['#f43f5e', '#10b981'],
-      borderWidth: 1.5,
-      borderRadius: 10,
-      borderSkipped: false
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 700, easing: 'easeOutQuart' },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(5,10,20,0.95)',
-        borderColor: 'rgba(148,163,184,0.2)',
-        borderWidth: 1,
-        titleColor: '#e2e8f0',
-        bodyColor: '#94a3b8',
-        padding: 10,
-        callbacks: { label: c => `  ${c.raw.toFixed(0)} ms` }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(148,163,184,0.06)' },
-        ticks: { color: '#475569', font: { family: 'Space Mono', size: 11 } }
-      },
-      x: {
-        ticks: { color: '#64748b', font: { family: 'Syne', weight: '700', size: 12 } },
-        grid: { display: false }
-      }
-    }
-  }
-});
-
-/* SQL typing effect */
-const sqlQueries = {
-  sum:   'SELECT SUM(amount) FROM sales WHERE year = 2024;',
-  avg:   'SELECT category, AVG(amount) FROM sales GROUP BY category;',
-  count: "SELECT COUNT(*) FROM sales WHERE region = 'Norte';"
+// ════════════ DOMAIN DEFINITIONS ════════════
+const DOMAINS = {
+  "ARCH":  {label:"1.0 Architecture",    color:"#00e5ff"},
+  "VIRT":  {label:"2.0 Virtualization",  color:"#60a5fa"},
+  "L2":    {label:"3.1 Layer 2",         color:"#39ff14"},
+  "L3":    {label:"3.2 Layer 3",         color:"#34d399"},
+  "IPSVS": {label:"3.3 IP Services",     color:"#fbbf24"},
+  "ASSUR": {label:"4.0 Assurance",       color:"#c084fc"},
+  "SEC":   {label:"5.0 Security",        color:"#f43f5e"},
+  "PY":    {label:"6.1 Python",          color:"#00e5ff"},
+  "JSON":  {label:"6.2 JSON",            color:"#39ff14"},
+  "YANG":  {label:"6.3 YANG",            color:"#ff6b1a"},
+  "API":   {label:"6.4 APIs",            color:"#c084fc"},
+  "REST":  {label:"6.5 REST/RC",         color:"#f43f5e"},
+  "EEM":   {label:"6.6 EEM",             color:"#fbbf24"},
+  "ORCH":  {label:"6.7 Orchestration",   color:"#34d399"},
 };
 
-let typingTimer = null;
-function typeSql(text) {
-  clearTimeout(typingTimer);
-  sqlText.textContent = '';
-  let i = 0;
-  function type() {
-    if (i < text.length) {
-      sqlText.textContent += text[i++];
-      typingTimer = setTimeout(type, 22);
-    }
+// ════════════ 200 QUESTIONS ════════════
+const ALL = [
+
+// ──────────────────────────────────────────────
+// 1.0 ARCHITECTURE  (20 questions)
+// ──────────────────────────────────────────────
+{d:"ARCH",q:"In a 3-tier campus design, which layer provides default gateway redundancy and inter-VLAN routing for access layer switches?",o:["Core layer","Distribution layer","Access layer","Collapsed core"],a:1,e:"<strong>Distribution layer</strong> handles inter-VLAN routing, FHRP (HSRP/VRRP/GLBP), and aggregates access layer uplinks. Core handles high-speed backbone transport."},
+{d:"ARCH",q:"Which SD-WAN component is responsible for distributing routing and policy information to vEdge/cEdge devices?",o:["vBond","vManage","vSmart","vEdge"],a:2,e:"<strong>vSmart</strong> is the policy controller that distributes OMP routes and centralized policies to all WAN edge devices via OMP (Overlay Management Protocol)."},
+{d:"ARCH",q:"What is the primary advantage of a spine-leaf (fabric) data center design over a traditional 3-tier model?",o:["Fewer switches required","Consistent east-west latency with any-to-any connectivity","Lower cost per port","No need for spanning tree"],a:1,e:"Spine-leaf provides <strong>predictable, low latency east-west traffic</strong>. Every leaf connects to every spine, guaranteeing max 2 hops between any two servers."},
+{d:"ARCH",q:"Which SD-Access component is analogous to the MAP Server/Resolver in a LISP deployment?",o:["Fabric border node","Fabric edge node","Control plane node","Intermediate node"],a:2,e:"The <strong>control plane node</strong> in SD-Access runs LISP and maintains the endpoint database (EID-to-RLOC mapping). It is the MAP Server and MAP Resolver for the fabric."},
+{d:"ARCH",q:"In Cisco SD-Access, which node type connects the fabric to external Layer 3 networks or other SD-Access fabrics?",o:["Fabric edge node","Control plane node","Fabric border node","Intermediate node"],a:2,e:"<strong>Fabric border nodes</strong> connect the SD-Access fabric to external networks (internet, DC, WAN). They perform LISP map-cache lookups for external destinations."},
+{d:"ARCH",q:"Which QoS mechanism is responsible for classifying and marking traffic as close to the source as possible?",o:["Policing","Queuing","Classification and Marking","Shaping"],a:2,e:"<strong>Classification and marking</strong> should happen at the ingress edge (access layer) to set DSCP or CoS values that subsequent devices honor without re-classifying."},
+{d:"ARCH",q:"What does SSO (Stateful Switchover) ensure in a dual-supervisor chassis?",o:["Both supervisors actively forward traffic simultaneously","The standby supervisor maintains a synchronized state so failover is transparent to the network","The standby supervisor rebuilds all protocol states from scratch after failover","Spanning tree is disabled during failover"],a:1,e:"<strong>SSO</strong> keeps the standby RP synchronized in real-time. On failover, the standby takes over with minimal disruption — line cards continue forwarding, and NSF preserves routing adjacencies."},
+{d:"ARCH",q:"Which FHRP allows a single virtual IP to be load-balanced across multiple active gateways using different virtual MACs?",o:["HSRP v2","VRRP","GLBP","IRDP"],a:2,e:"<strong>GLBP (Gateway Load Balancing Protocol)</strong> is Cisco-proprietary and allows multiple routers in a group to forward traffic simultaneously, each with a different virtual MAC but sharing a virtual IP."},
+{d:"ARCH",q:"What is the role of the vBond orchestrator in Cisco SD-WAN?",o:["Distributes routing policies to WAN edges","Manages GUI and REST API access","Authenticates and orchestrates initial connectivity between vEdge/cEdge and other controllers","Terminates IPsec tunnels for branch traffic"],a:2,e:"<strong>vBond</strong> is the first point of contact for all SD-WAN components. It authenticates devices and facilitates NAT traversal so that vEdge/cEdge routers can discover vSmart and vManage."},
+{d:"ARCH",q:"In a 2-tier (collapsed core) campus design, which layers are merged into a single device?",o:["Access and distribution","Distribution and core","Access and core","All three layers"],a:1,e:"A <strong>collapsed core</strong> merges the distribution and core layers into a single tier. This is suitable for smaller campuses where the traffic volume does not justify separate core switches."},
+{d:"ARCH",q:"Which SD-Access plane is responsible for endpoint registration and mobility tracking?",o:["Data plane","Control plane","Management plane","Policy plane"],a:1,e:"The SD-Access <strong>control plane</strong> (LISP) handles endpoint registration, tracking, and EID-to-RLOC mappings. This is what allows seamless endpoint mobility within the fabric."},
+{d:"ARCH",q:"DSCP value EF (Expedited Forwarding) is decimal value:",o:["46","48","34","40"],a:0,e:"<strong>EF = DSCP 46</strong> (binary 101110). It maps to IP Precedence 5 and is used for voice bearer traffic requiring low latency, low jitter, and low loss."},
+{d:"ARCH",q:"Which QoS mechanism delays packets when they exceed a configured rate but does NOT drop them?",o:["Policing","Marking","Shaping","Classification"],a:2,e:"<strong>Traffic shaping</strong> buffers (queues) excess traffic to smooth the output rate. Policing drops or re-marks excess traffic immediately. Shaping causes delay but no drops."},
+{d:"ARCH",q:"In Cisco SD-WAN, OMP (Overlay Management Protocol) runs between which components?",o:["vEdge and vBond","vSmart and vEdge/cEdge","vManage and vBond","vEdge devices only"],a:1,e:"<strong>OMP</strong> is a TCP-based protocol that runs between <strong>vSmart and vEdge/cEdge</strong> to exchange routes, service chains, and crypto key information across the overlay."},
+{d:"ARCH",q:"What is the primary function of a High Availability (HA) NSF (Non-Stop Forwarding) implementation?",o:["Prevents STP topology changes during supervisor failover","Allows CEF forwarding to continue during routing protocol reconvergence after a switchover","Synchronizes MAC address tables between dual supervisors","Encrypts control plane traffic during failover"],a:1,e:"<strong>NSF</strong> allows line cards to continue forwarding packets using stale CEF entries while the routing protocol re-establishes adjacencies after an RP switchover. Works with SSO."},
+{d:"ARCH",q:"Which SD-Access component handles wireless traffic in an over-the-top (OTT) deployment?",o:["Fabric border node","WLC acting as policy extended node","Control plane node","vBond"],a:1,e:"In an SD-Access OTT wireless deployment, the <strong>WLC acts as a policy extended node</strong>. APs are in Local mode and the WLC centrally switches traffic before it enters the fabric."},
+{d:"ARCH",q:"What distinguishes a 'cloud-managed' network architecture from an 'on-premises' managed architecture?",o:["Cloud-managed requires no internet connectivity","Cloud-managed uses a vendor SaaS platform for management; on-premises uses local controllers","On-premises is always more expensive","Cloud-managed always has lower latency"],a:1,e:"Cloud-managed (e.g., Meraki) uses a <strong>vendor-hosted SaaS management plane</strong>. On-premises (e.g., Catalyst Center) hosts the management platform locally. Cloud offers faster deployment; on-premises offers more control."},
+{d:"ARCH",q:"In QoS, what does the term 'trust boundary' define?",o:["The firewall perimeter of the network","The point at which the network trusts incoming DSCP/CoS markings from devices","The maximum bandwidth allowed per application","The encryption boundary between campus and WAN"],a:1,e:"The <strong>trust boundary</strong> is where the network begins to honor existing QoS markings. Traffic from unmanaged endpoints (PCs) is typically re-classified at the first network device."},
+{d:"ARCH",q:"Which HSRP version added support for group numbers above 255 and IPv6?",o:["HSRP version 1","HSRP version 2","GLBP","VRRP v3"],a:1,e:"<strong>HSRP version 2</strong> expanded group numbers from 0-255 to 0-4095, changed multicast address to 224.0.0.102, and added IPv6 support. Group number is encoded in the last 2 hex digits of the virtual MAC."},
+{d:"ARCH",q:"What type of routing does SD-Access use in the underlay network to provide reachability between fabric nodes?",o:["Static routing only","OSPF or IS-IS with LDP","IS-IS (automated by Catalyst Center) or manual OSPF","BGP with route reflectors"],a:2,e:"SD-Access underlay uses <strong>IS-IS (deployed automatically by Catalyst Center) or manually configured OSPF/BGP</strong>. The underlay provides IP reachability; the overlay (LISP + VXLAN) handles segmentation."},
+
+// ──────────────────────────────────────────────
+// 2.0 VIRTUALIZATION  (15 questions)
+// ──────────────────────────────────────────────
+{d:"VIRT",q:"What is the key difference between a Type 1 and Type 2 hypervisor?",o:["Type 1 supports more VMs","Type 1 runs directly on bare metal hardware; Type 2 runs as an application on a host OS","Type 2 is more secure","Type 1 requires a separate management OS"],a:1,e:"<strong>Type 1 (bare-metal)</strong>: VMware ESXi, Hyper-V, Citrix XenServer — runs directly on hardware. <strong>Type 2 (hosted)</strong>: VMware Workstation, VirtualBox, Parallels — runs as an app on a host OS."},
+{d:"VIRT",q:"Which VXLAN component encapsulates and de-encapsulates Layer 2 frames into UDP packets for transport across the Layer 3 underlay?",o:["VNI","VTEP","VLAN","VMM"],a:1,e:"<strong>VTEP (VXLAN Tunnel Endpoint)</strong> performs the encapsulation (adding VXLAN/UDP/IP headers) and de-encapsulation. VTEPs can be hardware-based (switches) or software-based (vSwitch)."},
+{d:"VIRT",q:"How many unique segments can VXLAN support, compared to traditional VLANs?",o:["4,096 (same as VLAN)","16 million (24-bit VNI)","65,535","1 million"],a:1,e:"VXLAN uses a <strong>24-bit VXLAN Network Identifier (VNI)</strong>, allowing up to 2^24 = ~16 million unique segments. Traditional 802.1Q VLANs are limited to 4,094 usable IDs."},
+{d:"VIRT",q:"What is 'live migration' in a virtualization environment?",o:["Cloning a VM to another datastore","Moving a running VM from one physical host to another with no downtime","Backing up a VM snapshot","Converting a VM from one hypervisor format to another"],a:1,e:"<strong>Live migration</strong> (VMware vMotion, Hyper-V Live Migration) moves a running VM between hosts without interruption. Memory state, disk, and network are transferred while the VM keeps running."},
+{d:"VIRT",q:"In VXLAN, what identifier maintains Layer 2 isolation between different tenant segments?",o:["VLAN ID","VTEP IP address","VXLAN Network Identifier (VNI)","UDP port number"],a:2,e:"The <strong>VNI (VXLAN Network Identifier)</strong> in the VXLAN header identifies the tenant segment. Each VNI represents a distinct Layer 2 broadcast domain, providing multi-tenancy isolation."},
+{d:"VIRT",q:"Which element in a virtualized environment provides network connectivity between VMs running on the same physical host?",o:["pNIC (physical NIC)","Hypervisor kernel","vSwitch (virtual switch)","VTEP"],a:2,e:"A <strong>vSwitch</strong> operates at Layer 2 within the hypervisor and connects VMs to each other and to external networks. Examples: VMware vSphere Standard Switch (VSS) and Distributed Switch (VDS)."},
+{d:"VIRT",q:"A network engineer resolves a long-standing CPU resource contention issue between two VMs on the same ESXi host. What is the recommended approach?",o:["Restart both VMs","Adjust CPU resource reservations and shares","Add more vCPUs to each VM","Migrate both VMs to different hosts"],a:1,e:"<strong>Resource reservations, limits, and shares</strong> control how the hypervisor schedules CPU time between VMs. Reservations guarantee minimum CPU; shares determine priority when resources are contested."},
+{d:"VIRT",q:"What does para-virtualization require from a guest OS?",o:["No modification to the guest OS","The guest OS is aware of the hypervisor and makes hypercalls instead of hardware calls","The guest OS must run on Type 2 hypervisors only","The guest OS handles all hardware interrupts natively"],a:1,e:"<strong>Para-virtualization</strong> (e.g., Xen with PV guests) requires a <strong>modified guest OS</strong> that calls the hypervisor API (hypercalls) directly, providing better performance than full virtualization."},
+{d:"VIRT",q:"In GRE tunneling, what overhead (in bytes) does the GRE header add to each packet?",o:["4 bytes","24 bytes","8 bytes","20 bytes"],a:1,e:"A basic GRE tunnel adds <strong>24 bytes</strong> of overhead: 20 bytes for the outer IP header + 4 bytes for the GRE header. This reduces the effective MTU and may cause fragmentation."},
+{d:"VIRT",q:"What is the primary purpose of VRF (Virtual Routing and Forwarding)?",o:["Encrypt traffic between remote sites","Create multiple independent routing tables on a single device, allowing IP address overlap","Provide redundant default gateways","Virtualize the physical switch ports"],a:1,e:"<strong>VRF</strong> creates separate routing table instances on a single device. Multiple VRFs can use overlapping IP address spaces without conflict — essential for MPLS L3VPN and network segmentation."},
+{d:"VIRT",q:"Which Cisco technology allows multiple physical switches to appear as a single logical switch with a shared control plane?",o:["VSS (Virtual Switching System)","VPC (Virtual Port Channel)","StackWise","vPC+"],a:0,e:"<strong>VSS</strong> pairs two Catalyst switches into a single logical switch. Both chassis share one control plane, one management IP, and one spanning-tree instance. This eliminates the need for HSRP and STP blocking."},
+{d:"VIRT",q:"When an interface is removed from a VRF and re-added, what must be done to its IP configuration?",o:["Nothing — IP address is preserved","The IP address must be re-entered because it is removed when the interface is assigned/removed from a VRF","The routing protocol must be restarted","The VRF must be deleted and recreated"],a:1,e:"IOS requires you to <strong>re-enter the IP address</strong> after assigning an interface to a VRF or removing it. The IP is cleared when VRF membership changes."},
+{d:"VIRT",q:"Which technology is used as the data plane for Cisco SD-Access to encapsulate endpoint traffic across the fabric?",o:["GRE","IPsec","VXLAN","MPLS"],a:2,e:"SD-Access uses <strong>VXLAN</strong> for the data plane. VNIs provide macro and micro-segmentation. LISP is the control plane (mapping system). VTEPs are typically the fabric edge nodes."},
+{d:"VIRT",q:"What is the maximum number of active ports that Cisco StackWise can support in a single stack?",o:["2","8","9","16"],a:2,e:"Cisco StackWise supports up to <strong>9 switches</strong> in a single stack (StackWise-480). The switches use a proprietary ring topology with a shared backplane up to 480 Gbps."},
+{d:"VIRT",q:"In a VXLAN fabric with a BGP EVPN control plane, what replaces the need for multicast groups for BUM (Broadcast, Unknown unicast, Multicast) traffic handling?",o:["Static head-end replication","OSPF flooding","BGP EVPN Type 3 routes (Inclusive Multicast Ethernet Tag)","STP flooding"],a:2,e:"BGP EVPN <strong>Type 3 (IMET) routes</strong> allow VTEPs to discover each other and signal BUM traffic handling, enabling ingress replication (unicast) without multicast in the underlay."},
+
+// ──────────────────────────────────────────────
+// 3.1 LAYER 2  (20 questions)
+// ──────────────────────────────────────────────
+{d:"L2",q:"SW1 has two interfaces with 'channel-group 1 mode active' and SW2 has 'channel-group 1 mode passive'. What will be the EtherChannel state?",o:["Down — both must be active","Up — LACP will negotiate successfully","Down — mismatched protocols","Up — PAgP negotiation takes over"],a:1,e:"LACP requires at least one side to be <strong>active</strong>. Active-passive is a valid combination. Active initiates negotiation; passive responds. Active-active also works."},
+{d:"L2",q:"A switch has 'spanning-tree portfast bpduguard default' configured globally. What happens when a BPDU arrives on a PortFast-enabled access port?",o:["The BPDU is discarded silently","The port is placed into err-disabled state","The port reverts to standard STP mode","The switch becomes the root bridge"],a:1,e:"<strong>BPDU Guard</strong> err-disables the port immediately when a BPDU is received. This protects against rogue switches being connected to access ports."},
+{d:"L2",q:"Which Rapid PVST+ port state immediately forwards traffic without transitioning through learning?",o:["Discarding","Learning","Forwarding","Blocking"],a:2,e:"With <strong>PortFast</strong>, the port transitions immediately to <strong>forwarding</strong>. Normally RSTP converges in ~1-2 seconds, but PortFast bypasses that for end-device ports."},
+{d:"L2",q:"In MST (Multiple Spanning Tree), what is an 'instance'?",o:["A physical switch in the MST region","A logical grouping of VLANs that shares a single spanning-tree topology","A backup path for RSTP","An MSTP BPDU format"],a:1,e:"An MST <strong>instance</strong> maps one or more VLANs to a single spanning-tree computation. Instance 0 is the Internal Spanning Tree (IST) that connects to the CIST. Other instances are MSTIs."},
+{d:"L2",q:"Which command configures an interface for 802.1Q trunking on a Cisco IOS switch?",o:["switchport mode access vlan 10","switchport trunk encapsulation dot1q\nswitchport mode trunk","switchport mode trunk only","switchport dynamic desirable"],a:1,e:"For IOS-based switches with multiple encapsulation support, you first set <strong>switchport trunk encapsulation dot1q</strong> then <strong>switchport mode trunk</strong>. Catalyst switches may not require the encapsulation command."},
+{d:"L2",q:"What is the native VLAN on an 802.1Q trunk, and why is it significant from a security perspective?",o:["VLAN 1 by default; untagged frames traverse it, which could allow VLAN hopping","VLAN 100 by default; it carries management traffic","VLAN 4094; it is always encrypted","There is no native VLAN — all frames are tagged"],a:0,e:"<strong>Native VLAN</strong> (VLAN 1 by default) carries untagged frames. If mismatched on both ends, VLAN hopping attacks become possible. Best practice: change native VLAN to an unused VLAN and tag all traffic."},
+{d:"L2",q:"Two switches have PAgP configured. SW1 has 'desirable' and SW2 has 'auto'. What is the EtherChannel result?",o:["Down — PAgP requires both active","Up — desirable initiates, auto responds","Down — protocol mismatch","Up but only one link active"],a:1,e:"PAgP <strong>desirable</strong> actively initiates negotiation; <strong>auto</strong> responds but doesn't initiate. Desirable-auto or desirable-desirable are valid PAgP combinations."},
+{d:"L2",q:"Which STP enhancement prevents a non-designated port from becoming a designated port due to superior BPDUs being lost?",o:["PortFast","BPDU Guard","Root Guard","Loop Guard"],a:3,e:"<strong>Loop Guard</strong> prevents a port from transitioning from blocking/non-designated to forwarding if it stops receiving BPDUs (which could be due to a unidirectional link failure)."},
+{d:"L2",q:"What does the 'show etherchannel summary' flag 'S' indicate for a port-channel interface?",o:["Suspended","Layer 2 port-channel","Standalone","Standby"],a:1,e:"Flag <strong>S = Layer 2</strong> port-channel. Flag R = Layer 3. Flag D = down. Flag P = bundled in port-channel. Knowing flags is essential for troubleshooting EtherChannel."},
+{d:"L2",q:"In RSTP, which port role is elected on each LAN segment to forward traffic toward the root bridge?",o:["Root port","Designated port","Alternate port","Backup port"],a:1,e:"The <strong>designated port</strong> is the port on each segment closest to the root bridge (best path back to root). It forwards traffic on that segment. Each segment has one designated port."},
+{d:"L2",q:"What is the purpose of BPDU Filter on a PortFast-enabled port?",o:["Drops all BPDUs on the port silently (stops sending and receiving)","Err-disables the port on BPDU receipt","Forwards BPDUs to the CPU for logging","Increases the BPDU timer"],a:0,e:"<strong>BPDU Filter</strong> suppresses BPDU sending and receiving on a port. Unlike BPDU Guard (which err-disables), BPDU Filter silently drops them. Use with caution — it can create loops if misapplied."},
+{d:"L2",q:"LACP uses which multicast MAC address for PDU exchange?",o:["01:80:C2:00:00:00","01:00:0C:CC:CC:CC","01:80:C2:00:00:02","FF:FF:FF:FF:FF:FF"],a:2,e:"LACP PDUs are sent to destination MAC <strong>01:80:C2:00:00:02</strong>. PAgP uses 01:00:0C:CC:CC:CC. CDP uses 01:00:0C:CC:CC:CC as well. These are slow-path multicasts."},
+{d:"L2",q:"What is the max number of active links in a standard LACP EtherChannel bundle?",o:["4","8","16","2"],a:1,e:"LACP supports up to <strong>16 member links</strong> per bundle — 8 active and 8 in hot-standby. The active 8 carry traffic; standby links take over if an active link fails."},
+{d:"L2",q:"Which MST command on a Cisco switch maps VLAN 10 and 20 to MST instance 1?",o:["spanning-tree mst 1 vlan 10,20","spanning-tree mst configuration\n instance 1 vlan 10,20","spanning-tree vlan 10,20 instance 1","mst instance 1 add vlan 10,20"],a:1,e:"MST mapping is done inside the MST configuration submode: <strong>spanning-tree mst configuration</strong> then <strong>instance 1 vlan 10,20</strong>. Changes require 'exit' to apply."},
+{d:"L2",q:"What happens when 'switchport nonegotiate' is configured on a trunk port?",o:["The port becomes an access port","DTP (Dynamic Trunking Protocol) frames are no longer sent on that interface","The port negotiates speed and duplex differently","LACP negotiation is disabled"],a:1,e:"<strong>switchport nonegotiate</strong> disables DTP, preventing trunk negotiation frames from being sent. Use this with manually configured trunks (switchport mode trunk) for security."},
+{d:"L2",q:"A port shows 'S D' flags in 'show etherchannel summary'. What does this indicate?",o:["Suspended and Down — the bundle is down","Layer 2 port-channel that is down","Standby and Disabled","Suspended and Desirable"],a:1,e:"Flag <strong>S = Layer 2</strong>, Flag <strong>D = down</strong>. So 'S D' means the Layer 2 port-channel is currently down (not operational). This indicates a configuration mismatch or link failure."},
+{d:"L2",q:"Which spanning-tree feature allows rapid transition to forwarding on point-to-point links in RSTP without waiting for timers?",o:["PortFast","Proposal/Agreement mechanism","Root Guard","Backbone Fast"],a:1,e:"RSTP's <strong>Proposal/Agreement (PA) handshake</strong> allows a port to transition rapidly to forwarding on point-to-point full-duplex links. This is why RSTP typically converges in under 1 second."},
+{d:"L2",q:"What is a VLAN allowed list on a trunk, and what is its security benefit?",o:["A list of VLANs that are blocked on the trunk","A list of VLANs explicitly permitted to traverse the trunk, reducing the attack surface","A spanning-tree priority list","A QoS marking list for VLAN traffic"],a:1,e:"<strong>switchport trunk allowed vlan</strong> restricts which VLANs can cross the trunk. Limiting to only needed VLANs reduces broadcast domains, prevents VLAN hopping, and reduces unnecessary STP topology scope."},
+{d:"L2",q:"Which EtherChannel load-balancing method is most appropriate when multiple flows go between the same source/destination IP pair?",o:["src-ip","dst-ip","src-dst-ip","src-mac"],a:2,e:"<strong>src-dst-ip</strong> hashes both source and destination IPs, providing the best distribution for various flows including those with the same source or destination."},
+{d:"L2",q:"In RSTP, what role does a port take if it is NOT the root port and NOT the designated port?",o:["Backup port","Alternate port","Discarding port","Non-forwarding port"],a:1,e:"An <strong>alternate port</strong> provides an alternate path to the root bridge (different from the root port's path). It is in discarding state. A backup port is an alternate path on the same shared segment."},
+
+// ──────────────────────────────────────────────
+// 3.2 LAYER 3  (20 questions)
+// ──────────────────────────────────────────────
+{d:"L3",q:"In BGP, which attribute is used to influence inbound traffic from external neighbors by making the AS path appear longer?",o:["Local Preference","MED","AS Path Prepending","Weight"],a:2,e:"<strong>AS Path Prepending</strong> adds repeated ASNs to the AS_PATH attribute, making the path appear longer. External BGP neighbors prefer shorter paths, directing inbound traffic through a different link."},
+{d:"L3",q:"What is the administrative distance of EIGRP internal routes?",o:["90","110","100","120"],a:0,e:"EIGRP internal = <strong>90</strong>. OSPF = 110. EIGRP external = 170. RIP = 120. Static = 1. Connected = 0. These values determine which source is preferred when routes to the same prefix exist."},
+{d:"L3",q:"In OSPF, which network type does NOT elect a DR/BDR?",o:["Broadcast","Non-broadcast","Point-to-point","Point-to-multipoint"],a:2,e:"<strong>Point-to-point</strong> networks (serial, GRE tunnels by default) do NOT elect a DR/BDR. Only broadcast and non-broadcast (NBMA) network types elect DR/BDR."},
+{d:"L3",q:"What is the default BGP local preference value, and which direction does it influence?",o:["100; influences outbound path selection within the AS","200; influences inbound traffic from external ASes","100; influences inbound traffic from external ASes","50; influences both inbound and outbound"],a:0,e:"BGP default <strong>Local Preference = 100</strong>. Higher is preferred. It is a well-known discretionary attribute exchanged only between iBGP peers, used to select the <strong>exit point from the AS</strong> (outbound)."},
+{d:"L3",q:"In OSPF, which LSA type is generated by an ASBR to describe routes from external routing domains?",o:["Type 1 (Router LSA)","Type 2 (Network LSA)","Type 5 (AS External LSA)","Type 3 (Summary LSA)"],a:2,e:"<strong>Type 5 LSA (AS External LSA)</strong> is generated by the ASBR and flooded throughout the OSPF domain (except stub areas). Type 7 is used in NSSAs and converted to Type 5 at the ABR."},
+{d:"L3",q:"An OSPF neighbor is stuck in EXSTART/EXCHANGE state. What is the most likely cause?",o:["Mismatched area IDs","MTU mismatch between neighbors","Different hello intervals","Mismatched authentication passwords"],a:1,e:"EXSTART/EXCHANGE issues are commonly caused by <strong>MTU mismatch</strong>. OSPF checks MTU in DBD packets. Use 'ip ospf mtu-ignore' to override, or fix the MTU. Hello timers affect 2-way state."},
+{d:"L3",q:"Which BGP attribute is Cisco-proprietary and has the highest influence in best path selection?",o:["Local Preference","MED","Weight","Origin"],a:2,e:"<strong>Weight</strong> is Cisco-proprietary (not exchanged between peers) and is the first tiebreaker in BGP best path selection. Higher weight = preferred. Default is 0 for learned routes, 32768 for locally originated."},
+{d:"L3",q:"What does 'passive-interface' do in an OSPF configuration?",o:["Completely disables OSPF on the interface","Suppresses hello packets on the interface but still advertises the network","Removes the interface from the routing process","Sets the interface to non-broadcast mode"],a:1,e:"<strong>passive-interface</strong> prevents OSPF hello packets from being sent/received on that interface (no neighbor formation) but the interface's network is still included in LSAs and routing updates."},
+{d:"L3",q:"In EIGRP, what is the Feasibility Condition (FC) used to determine a Feasible Successor?",o:["The reported distance must be less than the feasible distance of the current successor","The interface bandwidth must be greater than the successor path","The hop count must be equal to the successor","The route metric must exactly match the successor"],a:0,e:"EIGRP <strong>Feasibility Condition</strong>: a route is a Feasible Successor if its Reported Distance (RD) is strictly less than the Feasible Distance (FD) of the current successor. This guarantees loop freedom."},
+{d:"L3",q:"BGP sends KEEPALIVE messages every ___ seconds by default, with a hold time of ___ seconds.",o:["30 and 90","60 and 180","10 and 30","30 and 120"],a:1,e:"BGP default: <strong>KEEPALIVE = 60 seconds, Hold time = 180 seconds</strong>. If 3 keepalives are missed (180s), the session drops. These can be tuned with 'neighbor X timers'."},
+{d:"L3",q:"Which OSPF area type allows external LSAs (Type 5) but blocks Type 3 summary LSAs from the backbone?",o:["Stub area","NSSA","Totally stubby area","Backbone area"],a:2,e:"A <strong>Totally Stubby Area</strong> blocks both Type 3 (inter-area summary) and Type 5 (external) LSAs. Only a default route (Type 3) is injected. Regular stub blocks Type 5 but allows Type 3."},
+{d:"L3",q:"What is Policy-Based Routing (PBR), and how does it differ from standard routing?",o:["PBR uses dynamic routing protocols; standard routing uses static routes","PBR routes packets based on match criteria (ACL, packet size, ToS) rather than solely destination IP","PBR is used only for multicast routing","PBR replaces the routing table entirely"],a:1,e:"<strong>PBR</strong> matches traffic using route-maps and can forward packets based on source IP, DSCP, packet size, etc. — bypassing the normal destination-based routing table lookup."},
+{d:"L3",q:"In eBGP, which BGP neighbor command is required when peers are not directly connected?",o:["neighbor X update-source loopback0","neighbor X ebgp-multihop <ttl>","neighbor X remote-as X","neighbor X next-hop-self"],a:1,e:"<strong>ebgp-multihop</strong> increases the IP TTL for eBGP packets to allow sessions through multiple hops. Without it, eBGP packets with default TTL=1 would be discarded after the first hop."},
+{d:"L3",q:"What is the purpose of the 'ip ospf network point-to-point' command on a GigabitEthernet interface?",o:["Disables OSPF on the interface","Prevents DR/BDR election on a LAN segment; the two routers form full adjacency immediately","Changes the OSPF cost to 1","Enables OSPF only for multicast traffic"],a:1,e:"Setting <strong>point-to-point</strong> on a LAN interface prevents DR/BDR election and speeds convergence. Useful for point-to-point links configured on Ethernet where DR/BDR is unnecessary."},
+{d:"L3",q:"Which command clears BGP soft inbound policies without dropping the BGP session?",o:["clear ip bgp * hard","clear ip bgp X.X.X.X soft in","debug ip bgp X.X.X.X updates","reset ip bgp X.X.X.X"],a:1,e:"<strong>clear ip bgp X soft in</strong> triggers a route refresh request, re-processing inbound updates without resetting the BGP session. Requires the ROUTE-REFRESH capability (RFC 2918)."},
+{d:"L3",q:"In EIGRP, what happens to a route when there is no feasible successor and the successor is lost?",o:["The route is immediately removed from the routing table","The router sends an EIGRP query to all neighbors to find an alternate path (Active state)","The route falls back to OSPF","The interface is shut down"],a:1,e:"When a successor is lost and no Feasible Successor exists, the route enters <strong>Active state</strong>. EIGRP sends Query packets to all neighbors. If no reply within the Active Timer (3 min default), SIA (Stuck in Active) occurs."},
+{d:"L3",q:"What is the OSPF default reference bandwidth, and why should it be changed in modern networks?",o:["100 Mbps; FastEthernet and higher all get cost 1, making path selection indistinguishable","1 Gbps; outdated for 10G networks","10 Mbps; all interfaces get the same cost","1 Tbps; too high for accurate cost calculation"],a:0,e:"OSPF default reference bandwidth = <strong>100 Mbps</strong>. Any interface ≥ 100 Mbps gets cost 1 (FastEthernet, GigE, 10GigE all equal). Change with 'auto-cost reference-bandwidth 10000' (for 10G)."},
+{d:"L3",q:"Which BGP state comes immediately before ESTABLISHED and indicates that the routers are exchanging routing information?",o:["IDLE","CONNECT","OPENSENT","OPENCONFIRM"],a:3,e:"BGP state machine: IDLE → CONNECT → ACTIVE → OPENSENT → <strong>OPENCONFIRM</strong> → ESTABLISHED. OPENCONFIRM means the local router received an OPEN message and sent a KEEPALIVE, waiting for confirmation."},
+{d:"L3",q:"What is the function of BGP NEXT_HOP attribute in iBGP?",o:["Set to the iBGP peer's address automatically","NOT changed by default; the eBGP next-hop is preserved in iBGP updates, requiring 'next-hop-self' if peers cannot reach the external next-hop","Changed to the local router's loopback address","Replaced by the router ID in iBGP"],a:1,e:"In iBGP, the NEXT_HOP is <strong>not changed by default</strong>. The eBGP next-hop address is preserved and advertised to iBGP peers. If iBGP peers can't reach that address, <strong>neighbor next-hop-self</strong> is used to change it to the local iBGP peering address."},
+{d:"L3",q:"Idle (Admin) BGP state on a neighbor means:",o:["The neighbor is unreachable","An administrator used 'neighbor X shutdown' command","BGP is still initializing","The neighbor's AS number is wrong"],a:1,e:"<strong>Idle (Admin)</strong> means the session was manually administratively shut down with <strong>neighbor X shutdown</strong>. Use 'no neighbor X shutdown' to re-enable. Regular Idle means BGP is retrying after a failure."},
+
+// ──────────────────────────────────────────────
+// 3.3 IP SERVICES  (15 questions)
+// ──────────────────────────────────────────────
+{d:"IPSVS",q:"In IP SLA with ICMP echo, what does 'threshold 500' configure?",o:["Maximum allowed RTT in milliseconds","Number of retries before declaring failure","Minimum required bandwidth","DSCP marking threshold"],a:0,e:"IP SLA <strong>threshold</strong> defines the RTT value (in ms) that triggers a violation condition. When RTT exceeds the threshold, a threshold violation is declared, which can be tracked."},
+{d:"IPSVS",q:"What is the function of PTP (Precision Time Protocol) compared to NTP?",o:["PTP is less accurate than NTP","PTP provides sub-microsecond synchronization using hardware timestamps; NTP provides millisecond accuracy","PTP only works over UDP","PTP replaces BGP for timing"],a:1,e:"<strong>PTP (IEEE 1588)</strong> achieves sub-microsecond timing using hardware-based timestamps and is required for applications like LTE/5G synchronization. NTP typically achieves 1-50ms accuracy."},
+{d:"IPSVS",q:"Which NAT configuration allows multiple inside hosts to share a single outside IP address using port translation?",o:["Static NAT","Dynamic NAT","NAT overload (PAT)","Policy NAT"],a:2,e:"<strong>NAT overload (PAT — Port Address Translation)</strong> maps many inside addresses to one outside IP using unique source port numbers. This is how most home/enterprise internet access works."},
+{d:"IPSVS",q:"What is the NTP stratum level of a device that is directly synchronized to an atomic clock (stratum 0 source)?",o:["Stratum 0","Stratum 1","Stratum 2","Stratum 15"],a:1,e:"An NTP server directly connected to a stratum 0 source (GPS, atomic clock) is <strong>Stratum 1</strong>. Downstream clients become stratum 2, and so on. Stratum 15 is the maximum; stratum 16 = unsynchronized."},
+{d:"IPSVS",q:"An engineer configures 'ip nat inside source static tcp 10.1.1.100 80 209.165.200.1 80 extendable'. When is the 'extendable' keyword required?",o:["When the translation involves UDP","When multiple static translations exist for the same inside local address","When using PAT","When the inside interface is a loopback"],a:1,e:"<strong>extendable</strong> allows multiple static translations with the same inside local IP (e.g., same server exposed on multiple outside IPs). Without it, IOS only allows one static translation per inside address."},
+{d:"IPSVS",q:"VRRP preemption is enabled by default. What does VRRP preemption do?",o:["Allows a router with higher priority to take over as master even if the current master is functional","Forces a VRRP group to always use the highest IP address as master","Disables VRRP if the tracked interface goes down","Synchronizes VRRP state between two devices"],a:0,e:"<strong>VRRP preemption</strong> (default enabled) allows a router with a higher priority to reclaim the Master role when it comes back online, even if the current Master is functional. In HSRP, preempt must be explicitly configured."},
+{d:"IPSVS",q:"What is the default HSRP hello timer and hold timer?",o:["1 and 3 seconds","3 and 10 seconds","5 and 15 seconds","2 and 6 seconds"],a:1,e:"HSRP default: <strong>Hello = 3 seconds, Hold = 10 seconds</strong>. If the standby router does not receive 3 hellos within 10 seconds, it assumes the active router has failed."},
+{d:"IPSVS",q:"Which multicast protocol is responsible for routers learning about group membership from directly connected hosts?",o:["PIM","IGMP","MSDP","OSPF Multicast"],a:1,e:"<strong>IGMP (Internet Group Management Protocol)</strong> is used between hosts and their directly connected multicast routers to signal group memberships. IGMPv2 adds leave messages; IGMPv3 adds source-specific multicast (SSM)."},
+{d:"IPSVS",q:"In PIM Sparse Mode, what is the role of the Rendezvous Point (RP)?",o:["Blocks multicast traffic from non-members","Acts as a meeting point for multicast sources and receivers to establish multicast distribution trees","Assigns multicast group addresses","Converts IGMPv2 to IGMPv3 messages"],a:1,e:"The <strong>RP</strong> is the root of the shared distribution tree in PIM-SM. Sources register with the RP; receivers send joins toward the RP. The RP is required to bootstrap multicast group communication."},
+{d:"IPSVS",q:"Which command verifies the current NAT translations on a Cisco router?",o:["show ip nat statistics","show ip nat translations","show ip route nat","debug ip nat brief"],a:1,e:"<strong>show ip nat translations</strong> displays the current active NAT table entries (inside local, inside global, outside local, outside global). 'show ip nat statistics' shows counters and pool info."},
+{d:"IPSVS",q:"What HSRP feature reduces failover time when a tracked interface goes down?",o:["standby preempt","standby track <object> decrement <value>","standby timers msec","standby priority"],a:1,e:"<strong>standby track</strong> decrements the HSRP priority when a tracked interface or object fails. If the priority drops below the standby router's priority (and preempt is configured), failover occurs immediately."},
+{d:"IPSVS",q:"In GLBP, what is the role of the AVF (Active Virtual Forwarder)?",o:["Elects the AVG","Responds to ARP requests with its own virtual MAC","Monitors all group members","Manages the virtual IP address"],a:1,e:"GLBP AVFs respond to ARP requests with their own unique <strong>virtual MAC address</strong>, distributing traffic across multiple gateways. The AVG (Active Virtual Gateway) manages MAC-to-router assignments."},
+{d:"IPSVS",q:"Which SNMP version provides both authentication and encryption for management traffic?",o:["SNMPv1","SNMPv2c","SNMPv3 with noAuthNoPriv","SNMPv3 with authPriv"],a:3,e:"<strong>SNMPv3 with authPriv</strong> provides MD5/SHA authentication AND DES/AES encryption. authNoPriv authenticates but doesn't encrypt. noAuthNoPriv provides no security (like v1/v2c community strings)."},
+{d:"IPSVS",q:"What is RPF (Reverse Path Forwarding) in multicast routing?",o:["A method to encrypt multicast streams","A loop prevention mechanism that checks whether the multicast packet arrived on the interface toward the source","A protocol for electing the RP","A filter that blocks multicast from unauthorized sources"],a:1,e:"<strong>RPF check</strong>: a multicast packet is only forwarded if it arrives on the interface that the router would use to reach the source (unicast routing table). If RPF fails, the packet is dropped to prevent loops."},
+{d:"IPSVS",q:"Which Flexible NetFlow parameter exports flow records when a flow has been idle for a specified time?",o:["cache timeout active","cache timeout inactive","cache entries","cache type normal"],a:1,e:"<strong>cache timeout inactive</strong> triggers export of a flow record when no new packets for that flow have been seen for the specified time (e.g., 'cache timeout inactive 20' exports after 20 seconds of idle)."},
+
+// ──────────────────────────────────────────────
+// 4.0 NETWORK ASSURANCE  (15 questions)
+// ──────────────────────────────────────────────
+{d:"ASSUR",q:"In SPAN (Switched Port Analyzer), what is the difference between source and destination port?",o:["Source = monitoring server port; destination = monitored port","Source = monitored port(s)/VLAN; destination = port connected to the analyzer/sniffer","Both can be the same port","SPAN requires a separate VLAN for operation"],a:1,e:"<strong>SPAN source</strong>: port or VLAN being monitored. <strong>SPAN destination</strong>: port connected to the network analyzer (Wireshark, IDS). Destination port drops normal forwarding while configured for SPAN."},
+{d:"ASSUR",q:"What is ERSPAN used for compared to RSPAN?",o:["ERSPAN is Layer 2 only; RSPAN is Layer 3","ERSPAN encapsulates mirrored traffic in GRE and sends it across Layer 3 networks; RSPAN uses a dedicated VLAN within the same Layer 2 domain","ERSPAN requires fewer ports","RSPAN provides encryption; ERSPAN does not"],a:1,e:"<strong>ERSPAN (Encapsulated RSPAN)</strong> encapsulates mirrored traffic in GRE and can send it across Layer 3 networks to a remote analyzer. <strong>RSPAN</strong> uses a special VLAN and is limited to the same L2 domain."},
+{d:"ASSUR",q:"A network monitoring system's SNMP polling fails after a router reload that added a new interface. What is the most likely cause?",o:["Community string expired","SNMP interface index (ifIndex) changed after reload","The router's SNMP agent crashed","ACL blocking SNMP traffic"],a:1,e:"When a router reloads (especially with a new interface), <strong>ifIndex values can change</strong>. SNMP NMS systems that store ifIndex for specific interfaces will query the wrong OID. Use 'snmp-server ifindex persist' to fix."},
+{d:"ASSUR",q:"What is Cisco IP SLA used for?",o:["Routing protocol optimization","Active network monitoring by generating synthetic test traffic to measure latency, jitter, and availability","SNMP trap collection","BGP path verification"],a:1,e:"<strong>IP SLA</strong> generates synthetic traffic (ICMP echo, UDP jitter, HTTP, DNS, etc.) to proactively measure network performance metrics and trigger tracked objects for routing or alert purposes."},
+{d:"ASSUR",q:"Which command configures a conditional debug that only outputs messages related to a specific IP address?",o:["debug ip packet detail","debug condition ip <addr>","debug ip conditional address <addr>","debug ip <addr> verbose"],a:1,e:"<strong>debug condition ip <address></strong> enables conditional debugging, filtering debug output to only show packets matching that IP. This reduces the CPU impact of debugs on production devices."},
+{d:"ASSUR",q:"What is the purpose of Cisco Catalyst Center (DNA Center) AI Network Analytics?",o:["Generates device configurations","Uses ML baselines to detect network anomalies and provide guided remediation","Replaces SNMP polling entirely","Manages software upgrades only"],a:1,e:"Catalyst Center <strong>AI Network Analytics</strong> establishes dynamic baselines using ML and flags deviations as issues. It provides root cause analysis and suggests remediation steps — going beyond simple threshold alerting."},
+{d:"ASSUR",q:"In RSPAN, what is the special characteristic of the RSPAN VLAN?",o:["It must be VLAN 1","It must be configured with 'remote-span' and cannot carry regular traffic; access ports assigned to it become inactive","It requires multicast to be enabled","It automatically encrypts mirrored traffic"],a:1,e:"An RSPAN VLAN is dedicated exclusively for mirror traffic. Configuring <strong>remote-span</strong> on the VLAN marks it as reserved. Any access port assigned to an RSPAN VLAN is placed in an inactive state."},
+{d:"ASSUR",q:"What is the function of syslog severity level 3 (Error)?",o:["Informational messages","Critical system conditions requiring immediate action","Error conditions that need attention but the system continues","Debugging-level messages"],a:2,e:"Syslog levels: 0=Emergency, 1=Alert, 2=Critical, 3=<strong>Error</strong>, 4=Warning, 5=Notice, 6=Informational, 7=Debug. Level 3 (Error) indicates error conditions that should be investigated."},
+{d:"ASSUR",q:"Which Catalyst Center API allows an engineer to run 'show' commands on managed devices remotely?",o:["SWIM API","Template Programmer API","Command Runner API","Path Trace API"],a:2,e:"The <strong>Command Runner API</strong> allows execution of read-only show commands on devices managed by Catalyst Center, returning CLI output through the REST API without direct SSH access."},
+{d:"ASSUR",q:"What does a Flexible NetFlow 'flow record' define?",o:["The destination for exported flow data","The fields to match (keys) and collect (non-keys) for each flow","The sampling rate for packets","The timeout values for active and inactive flows"],a:1,e:"A <strong>flow record</strong> defines what constitutes a unique flow (key fields: src IP, dst IP, protocol, etc.) and what data to collect (non-key fields: byte counts, timestamps). This is the schema for each flow entry."},
+{d:"ASSUR",q:"In Catalyst Center, what is a 'golden image' in the Software Image Management (SWIM) workflow?",o:["The newest available image for a platform","Cisco's recommended and verified software image for a specific device type","Any image that passes a compliance check","The factory default image"],a:1,e:"A <strong>golden image</strong> in Catalyst Center SWIM is the <strong>Cisco-recommended image</strong> for a specific device type. It is tagged as the standard for that platform and used for compliance checking and upgrades."},
+{d:"ASSUR",q:"What is the key difference between SPAN and RSPAN?",o:["SPAN mirrors only inbound traffic; RSPAN mirrors both directions","SPAN works on a single switch; RSPAN extends monitoring traffic across trunk links to other switches","SPAN requires a license; RSPAN does not","RSPAN mirrors only control plane traffic"],a:1,e:"<strong>SPAN</strong> is local to one switch. <strong>RSPAN</strong> extends the mirrored traffic over a special VLAN through trunk links to a monitoring port on a different switch."},
+{d:"ASSUR",q:"Which 'show' command displays the jitter, RTT, and packet loss results of a UDP jitter IP SLA probe?",o:["show ip sla statistics","show ip sla configuration","show ip sla summary","show ip sla history"],a:0,e:"<strong>show ip sla statistics</strong> displays the results of IP SLA operations including RTT, jitter, packet loss, and success/failure counts. Use 'show ip sla statistics aggregated' for historical data."},
+{d:"ASSUR",q:"What does Catalyst Center's Path Trace feature provide?",o:["Monitors BGP route changes","Computes and visualizes the Layer 3-4 path between two hosts, showing hops and applied policies","Generates NetFlow reports","Deploys ACLs to all devices in the path"],a:1,e:"<strong>Path Trace</strong> (Flow Analysis) uses device forwarding tables to trace the actual packet path between two endpoints, showing each hop, interface, ACL matches, and QoS policies applied."},
+{d:"ASSUR",q:"What is the purpose of 'show ip cef' and how does it relate to 'show ip route'?",o:["They are identical commands","show ip cef shows the Forwarding Information Base (FIB) used by hardware for fast packet forwarding; show ip route shows the RIB (control plane)","show ip cef shows MAC addresses; show ip route shows IP addresses","show ip cef is deprecated in IOS-XE"],a:1,e:"<strong>show ip route</strong> = RIB (Routing Information Base, control plane). <strong>show ip cef</strong> = FIB (Forwarding Information Base, data plane). CEF is derived from the RIB and used for hardware-based fast switching."},
+
+// ──────────────────────────────────────────────
+// 5.0 SECURITY  (20 questions)
+// ──────────────────────────────────────────────
+{d:"SEC",q:"Which command enables AAA authentication for console and VTY lines using RADIUS with a local fallback?",o:["aaa authentication login default radius","aaa authentication login default radius local","aaa authorization exec default radius local","aaa authentication enable default radius local"],a:1,e:"<strong>aaa authentication login default radius local</strong> tries RADIUS first; if RADIUS is unreachable, falls back to local database. 'radius' alone with no fallback would lock you out if RADIUS is down."},
+{d:"SEC",q:"Which type of ACL can filter based on both source AND destination IP addresses?",o:["Standard ACL","Extended ACL","Dynamic ACL","Reflexive ACL"],a:1,e:"<strong>Extended ACLs</strong> can match source/destination IP, protocol, source/destination ports, DSCP, and more. Standard ACLs only match source IP. Extended ACLs should be placed close to the source."},
+{d:"SEC",q:"What is the purpose of CoPP (Control Plane Policing)?",o:["Encrypts control plane traffic between routers","Rate-limits traffic destined to the router's CPU to protect against DoS attacks","Filters routing updates based on prefix lists","Applies QoS to transit traffic"],a:1,e:"<strong>CoPP</strong> protects the router's CPU (control plane) by policing traffic destined to the RP (routing protocols, SNMP, SSH, etc.). It prevents resource exhaustion from DoS/DDoS attacks."},
+{d:"SEC",q:"Which security feature prevents an unauthorized switch from becoming the STP root bridge?",o:["BPDU Guard","Root Guard","Loop Guard","PortFast"],a:1,e:"<strong>Root Guard</strong> is configured on designated ports. If a superior BPDU is received on that port (indicating a switch is trying to become root), the port is placed into root-inconsistent state."},
+{d:"SEC",q:"TrustSec uses Security Group Tags (SGTs). What is the primary benefit of SGT-based policies?",o:["They encrypt all data between endpoints","Policies are based on logical group identity rather than IP addresses, surviving network changes","They eliminate the need for VLAN segmentation","SGTs replace ACLs on all interfaces"],a:1,e:"<strong>SGTs</strong> allow policies to follow users/devices regardless of IP address or location. Policies reference group names (Employee, Contractor, IOT), not IPs — far more scalable and flexible than IP-based ACLs."},
+{d:"SEC",q:"Which IEEE standard defines port-based Network Access Control (802.1X)?",o:["IEEE 802.1Q","IEEE 802.1X","IEEE 802.3af","IEEE 802.11i"],a:1,e:"<strong>IEEE 802.1X</strong> defines port-based NAC using EAP (Extensible Authentication Protocol). The authenticator (switch/AP) communicates with an authentication server (RADIUS/ISE) to grant network access."},
+{d:"SEC",q:"What is MACsec (IEEE 802.1AE)?",o:["A MAC address filtering protocol","A Layer 2 encryption standard that provides hop-by-hop authentication and encryption of Ethernet frames","A MAC address rotation feature for security","A protocol for detecting MAC spoofing"],a:1,e:"<strong>MACsec (802.1AE)</strong> provides Layer 2 encryption and integrity protection for Ethernet frames between adjacent devices. It uses GCM-AES-128 or GCM-AES-256 for hop-by-hop encryption on each link."},
+{d:"SEC",q:"Which command applies an extended ACL named 'BLOCK_FTP' to an interface in the inbound direction?",o:["ip access-class BLOCK_FTP in","ip access-group BLOCK_FTP in","access-list apply BLOCK_FTP in","ip inspect BLOCK_FTP in"],a:1,e:"<strong>ip access-group BLOCK_FTP in</strong> applies the named extended ACL to the interface for inbound traffic. 'ip access-class' is used on VTY lines (not interfaces)."},
+{d:"SEC",q:"An ACL has 'deny tcp any host 10.1.1.1 eq 80' then 'permit ip any any'. What traffic is blocked?",o:["All TCP traffic to host 10.1.1.1","HTTP (TCP 80) traffic to host 10.1.1.1 only","All traffic to host 10.1.1.1","HTTP traffic from host 10.1.1.1"],a:1,e:"The ACL specifically denies <strong>TCP port 80 (HTTP) destined to 10.1.1.1</strong> only. All other traffic (including HTTPS, other ports, other destinations) is permitted by the implicit permit any any."},
+{d:"SEC",q:"What is the primary advantage of TACACS+ over RADIUS for device administration?",o:["TACACS+ is faster","TACACS+ separates authentication, authorization, and accounting; encrypts the entire packet","RADIUS supports more authentication methods","TACACS+ works over UDP for reliability"],a:1,e:"<strong>TACACS+</strong> (TCP, port 49) encrypts the entire packet payload and separates AAA functions. RADIUS (UDP, ports 1645/1646 or 1812/1813) only encrypts the password field. TACACS+ is preferred for device management."},
+{d:"SEC",q:"Which REST API security mechanism prevents man-in-the-middle attacks by verifying server identity?",o:["API key in request body","SSL/TLS certificates","Basic authentication","Rate limiting"],a:1,e:"<strong>SSL/TLS certificates</strong> prevent MITM attacks by authenticating the server. The client verifies the server's certificate against a trusted CA. Without certificate validation, traffic can be intercepted and decrypted."},
+{d:"SEC",q:"What is the purpose of 'service password-encryption' in IOS?",o:["Enables AES-256 encryption for all passwords","Encrypts passwords stored in the running config using weak Type 7 (Vigenere) encryption — protects against casual shoulder surfing","Encrypts SSH sessions","Enables FIPS-compliant password hashing"],a:1,e:"<strong>service password-encryption</strong> applies Type 7 (reversible, weak) encryption to plaintext passwords in the config. It's not truly secure but prevents casual viewing. 'enable secret' uses MD5 (Type 5) — much stronger."},
+{d:"SEC",q:"Which Cisco next-generation firewall feature differentiates it from a traditional stateful firewall?",o:["Packet filtering","Stateful inspection","Application visibility and malware protection (AMP)","NAT support"],a:2,e:"NGFWs add capabilities beyond stateful inspection: <strong>AVC (Application Visibility and Control), IPS/IDS, AMP (Advanced Malware Protection), URL filtering</strong>, and SSL inspection. These are absent in traditional stateful firewalls."},
+{d:"SEC",q:"In AAA authorization, 'aaa authorization exec default group tacacs+ local' does what?",o:["Authenticates users with TACACS+","Checks TACACS+ to determine if the user can enter EXEC mode; falls back to local if TACACS+ is unavailable","Authorizes all commands against TACACS+","Enables accounting for exec sessions"],a:1,e:"<strong>exec authorization</strong> determines whether an authenticated user can access the privileged EXEC shell. It queries TACACS+ for privilege level assignment; falls back to local if TACACS+ is down."},
+{d:"SEC",q:"Dynamic ARP Inspection (DAI) protects against which Layer 2 attack?",o:["MAC flooding","ARP spoofing/poisoning","DHCP starvation","VLAN hopping"],a:1,e:"<strong>DAI</strong> validates ARP packets against the DHCP snooping binding table. If the sender MAC/IP in an ARP reply doesn't match the binding, the frame is dropped — preventing <strong>ARP poisoning/spoofing</strong>."},
+{d:"SEC",q:"Which access-list extended ACL correctly blocks FTP control (port 21) and FTP data (port 20) from subnet 10.0.2.0/24?",o:["access-list 101 deny tcp 10.0.2.0 0.0.0.255 any eq 21\naccess-list 101 deny tcp 10.0.2.0 0.0.0.255 any eq 20\naccess-list 101 permit ip any any","access-list 101 deny ftp 10.0.2.0 any","access-list 101 deny tcp any any eq ftp","access-list 101 deny ip 10.0.2.0 any eq 21"],a:0,e:"Extended ACLs require specifying protocol (tcp), source, destination, and port. FTP uses <strong>port 21 (control)</strong> and <strong>port 20 (data)</strong>. Both must be explicitly denied for full FTP blocking."},
+{d:"SEC",q:"What is DHCP snooping, and which ports should be configured as trusted?",o:["DHCP snooping is a QoS feature; server ports are trusted","DHCP snooping validates DHCP messages and drops rogue DHCP server responses; only uplink ports toward legitimate DHCP servers should be trusted","DHCP snooping requires RADIUS authentication","All trunk ports should be untrusted"],a:1,e:"<strong>DHCP snooping</strong> blocks DHCP OFFER/ACK on untrusted ports (access ports facing clients). Only <strong>uplink ports toward the real DHCP server</strong> are trusted. This prevents rogue DHCP servers."},
+{d:"SEC",q:"What does 'ip access-group 101 out' on a router interface mean?",o:["Filters traffic entering the interface from the network","Filters traffic leaving the interface toward the network","Applies the ACL to management traffic only","The ACL is applied bidirectionally"],a:1,e:"<strong>ip access-group out</strong> filters traffic being <strong>routed out</strong> of that interface (toward the attached network/WAN). Note: outbound router ACLs do NOT filter traffic originated by the router itself."},
+{d:"SEC",q:"Which 802.1X component is responsible for passing EAP messages between the supplicant and the authentication server?",o:["Supplicant","Authentication server (RADIUS)","Authenticator (switch/AP)","AAA proxy"],a:2,e:"The <strong>authenticator</strong> (switch or AP) receives EAP frames from the supplicant via EAPOL and forwards them encapsulated in RADIUS to the authentication server. It enforces access based on the server's response."},
+{d:"SEC",q:"Which IOS feature rate-limits SSH and Telnet login attempts to prevent brute-force attacks on VTY lines?",o:["login delay","login block-for X attempts Y within Z","tacacs-server timeout","service tcp-keepalives"],a:1,e:"<strong>login block-for</strong> temporarily blocks login attempts for X seconds if Y failed attempts occur within Z seconds. It also enables a quiet period mode, significantly slowing brute-force attacks."},
+
+// ──────────────────────────────────────────────
+// 6.1 PYTHON  (15 questions)
+// ──────────────────────────────────────────────
+{d:"PY",q:"What does this Python code output?\n<pre>data = [1, 2, 3, 4, 5]\nresult = [x * 2 for x in data if x % 2 == 0]\nprint(result)</pre>",o:["[2,4,6,8,10]","[4,8]","[2,4]","[1,3,5]"],a:1,e:"The list comprehension filters even numbers (x % 2 == 0 → 2, 4) then doubles them → <strong>[4, 8]</strong>. Odd numbers (1,3,5) are excluded by the if condition."},
+{d:"PY",q:"In a Python script calling a REST API, what does 'response.status_code == 200' check?",o:["The response body is empty","The HTTP response indicates a successful GET request","The connection timed out","The request was redirected"],a:1,e:"HTTP <strong>200 OK</strong> is the standard success status for GET requests. Checking status_code == 200 verifies the API call succeeded. For POST creating a resource, check for 201."},
+{d:"PY",q:"Which Python construct is used to repeatedly execute a block of code for each item in a list of device hostnames?",o:["while True","if/elif","for hostname in devices:","try/except"],a:2,e:"<strong>for ... in ...</strong> iterates over a collection. In network automation, 'for device in device_list:' is fundamental for applying the same operation (e.g., SSH connect, API call) to multiple devices."},
+{d:"PY",q:"What is the output of:\n<pre>d = {'a': 1, 'b': 2}\nprint(d.get('c', 'NOT FOUND'))</pre>",o:["None","KeyError","NOT FOUND","0"],a:2,e:"<strong>dict.get(key, default)</strong> returns the default ('NOT FOUND') when the key 'c' doesn't exist. This avoids KeyError exceptions when accessing potentially missing keys in API response data."},
+{d:"PY",q:"Which Python library provides SSH connectivity to Cisco IOS devices with support for CLI interaction patterns?",o:["requests","paramiko","netmiko","ncclient"],a:2,e:"<strong>netmiko</strong> is a multi-vendor SSH library that handles IOS/IOS-XE/NX-OS prompt patterns, paging (--More--), and CLI interactions. ncclient is for NETCONF/YANG. requests is for HTTP/REST APIs."},
+{d:"PY",q:"A Python script has 'import json' and receives an API response. Which method converts the JSON string body to a Python dict?",o:["json.dumps(response.text)","json.loads(response.text)","json.decode(response.text)","json.parse(response.text)"],a:1,e:"<strong>json.loads()</strong> (load string) deserializes a JSON string into a Python dict/list. json.dumps() serializes a Python object to JSON string. There is no json.decode() or json.parse() in Python's standard library."},
+{d:"PY",q:"What does 'verify=False' mean in a 'requests.get(url, verify=False)' call?",o:["The request will not verify the HTTP response body","SSL/TLS certificate verification is disabled","The response is not cached","Authentication is skipped"],a:1,e:"<strong>verify=False</strong> disables SSL certificate validation. Useful in lab environments with self-signed certificates. In production, always use verify=True or specify a CA bundle path to prevent MITM attacks."},
+{d:"PY",q:"Which Python statement catches all exceptions generically?",o:["except Error:","except Exception as e:","catch Exception:","on error:"],a:1,e:"<strong>except Exception as e:</strong> catches all exceptions derived from the base Exception class. Using bare 'except:' is discouraged. 'as e' binds the exception object for logging/debugging."},
+{d:"PY",q:"What does the following Python code do with a Catalyst Center API response?\n<pre>devices = response.json()['response']\nfor d in devices:\n    print(d['hostname'])</pre>",o:["Prints the JSON string","Prints each device's hostname from the response array","Sends a new API request for each device","Filters devices by hostname"],a:1,e:"Catalyst Center wraps data in a top-level 'response' key. <strong>response.json()['response']</strong> extracts the list of device objects. The for loop iterates over each device dict and prints the 'hostname' value."},
+{d:"PY",q:"In Python, what is the difference between '==' and 'is' when comparing objects?",o:["They are identical","'==' compares values (equality); 'is' compares object identity (same memory address)","'is' is used only for None comparisons","'==' is for integers only"],a:1,e:"<strong>'=='</strong> compares values. <strong>'is'</strong> checks if two variables point to the exact same object in memory. Use 'if x is None:' (not '== None') to check for None, as recommended by PEP 8."},
+{d:"PY",q:"A Python script needs to read interface data from a NETCONF device. Which library provides the ncclient connection manager?",o:["requests","paramiko","ncclient","netmiko"],a:2,e:"<strong>ncclient</strong> is the Python library for NETCONF operations. It provides the manager.connect() function and methods like get_config(), edit_config(), and get() for YANG-based device interaction."},
+{d:"PY",q:"What does this Python code produce?\n<pre>x = {'vlan': 10, 'name': 'DATA'}\nprint(list(x.keys()))</pre>",o:["['vlan', 'name']","[10, 'DATA']","{'vlan': 10}","KeyError"],a:0,e:"<strong>dict.keys()</strong> returns a view of all keys. <strong>list()</strong> converts it to a list: <strong>['vlan', 'name']</strong>. This pattern is useful when iterating over or checking keys in API response dictionaries."},
+{d:"PY",q:"Which Python method sends an HTTP POST request with a JSON body to a REST API?",o:["requests.get(url, json=payload)","requests.post(url, json=payload)","requests.put(url, data=payload)","requests.send(url, json=payload)"],a:1,e:"<strong>requests.post(url, json=payload)</strong> serializes the payload dict as JSON, sets Content-Type to application/json, and sends the POST request. The 'json=' parameter handles serialization automatically."},
+{d:"PY",q:"A Python network script uses 'with open(\"config.txt\", \"w\") as f: f.write(data)'. What does 'w' mode do?",o:["Opens file for reading","Opens file for writing, creating it if it doesn't exist (overwrites existing content)","Appends to an existing file","Opens file in binary mode"],a:1,e:"Mode <strong>'w'</strong> opens a file for writing. If the file exists, it is truncated (overwritten). If it doesn't exist, it's created. Use 'a' for append mode or 'r' for read-only."},
+{d:"PY",q:"In Python, what does 'response.raise_for_status()' do after a requests API call?",o:["Prints the HTTP status code to console","Raises an HTTPError exception if the response status code indicates a 4xx or 5xx error","Retries the request automatically","Logs the response headers"],a:1,e:"<strong>raise_for_status()</strong> checks the response status code. For 4xx client errors or 5xx server errors, it raises an <strong>HTTPError</strong> exception. This enables clean error handling in automation scripts."},
+
+// ──────────────────────────────────────────────
+// 6.2 JSON  (10 questions)
+// ──────────────────────────────────────────────
+{d:"JSON",q:"Which of the following is a syntactically valid JSON object?",o:['{"hostname": "R1", "enabled": true, "count": 5}','{"hostname": \'R1\', "enabled": True}','{hostname: "R1", enabled: true}','{"hostname": "R1", "enabled": TRUE}'],a:0,e:"Valid JSON requires <strong>double-quoted keys and string values</strong>, boolean <strong>lowercase (true/false)</strong>, and numeric values unquoted. Single quotes and Python-style 'True' are invalid JSON."},
+{d:"JSON",q:"In a Catalyst Center API response, the data is wrapped in a top-level key. Which key is it?",o:["data","result","response","output"],a:2,e:"Catalyst Center API responses wrap the actual data in a <strong>'response'</strong> key. Scripts must access data['response'] or response.json()['response'] to get the list/object of interest."},
+{d:"JSON",q:"What JSON data type correctly represents the number of BGP prefixes received: 15420?",o:['"15420"',"15420","true","null"],a:1,e:"JSON numbers are written without quotes: <strong>15420</strong>. Writing \"15420\" makes it a string, which would fail type-sensitive comparisons. Integers and floats are both valid JSON number types."},
+{d:"JSON",q:"Which Python method serializes a Python dictionary to a JSON-formatted string with indentation for readability?",o:["json.loads(data)","json.dumps(data, indent=2)","json.encode(data)","json.format(data)"],a:1,e:"<strong>json.dumps(data, indent=2)</strong> converts a Python dict to a pretty-printed JSON string with 2-space indentation. Without indent, it produces a compact single-line string."},
+{d:"JSON",q:"A JSON array of three interface objects looks like:",o:['{"interfaces": {"name":"Gi0","Gi1","Gi2"}}','[{"name":"Gi0"},{"name":"Gi1"},{"name":"Gi2"}]','{"interface_0":"Gi0","interface_1":"Gi1"}','("Gi0","Gi1","Gi2")'],a:1,e:"A JSON <strong>array</strong> uses square brackets and contains ordered values separated by commas. Each element here is an object (curly braces). This is the standard pattern for API responses with multiple items."},
+{d:"JSON",q:"What does RFC 7951 specify regarding YANG module names in JSON encoding?",o:["Module names are omitted in JSON","Key names use module-name:leaf-name notation on first occurrence to prevent namespace conflicts","Module names replace YANG leaf names","All keys must be numeric in JSON YANG encoding"],a:1,e:"RFC 7951 (JSON Encoding of YANG Data) requires <strong>module-name:leaf-name</strong> format for the first occurrence of keys to resolve namespace conflicts between modules. Subsequent same-namespace keys omit the prefix."},
+{d:"JSON",q:"What is wrong with this JSON?\n<pre>{\"vlan\": 10, \"name\": \"DATA\",}</pre>",o:["Nothing — it is valid JSON","Trailing comma after the last element is invalid JSON","The number 10 should be quoted","'vlan' key requires a string value"],a:1,e:"JSON does NOT allow <strong>trailing commas</strong>. After the last key-value pair in an object (or last element in an array), there must be no comma. This is a common error when manually editing JSON."},
+{d:"JSON",q:"How is a null value represented in valid JSON?",o:["NULL","None","nil","null"],a:3,e:"JSON uses lowercase <strong>null</strong> (not Python's None, SQL's NULL, or Java's null). JSON booleans are also lowercase: true and false."},
+{d:"JSON",q:"A REST API requires 'Content-Type: application/yang-data+json'. What protocol is this typically associated with?",o:["REST API with plain JSON","NETCONF","RESTCONF","GraphQL"],a:2,e:"<strong>application/yang-data+json</strong> is the RESTCONF-specific media type defined in RFC 8040. It indicates YANG-modeled data in JSON encoding. Plain REST APIs use application/json."},
+{d:"JSON",q:"Which Python code correctly accesses the 'role' field from this JSON response?\n<pre>{\"response\": [{\"hostname\": \"R1\", \"role\": \"BORDER\"}]}</pre>",o:["data['response']['role']","data['response'][0]['role']","data[0]['role']","data['role']"],a:1,e:"The 'response' value is a <strong>list (array)</strong>, so you must index it: <strong>data['response'][0]['role']</strong>. Many beginners forget the [0] index when the JSON response wraps the object in an array."},
+
+// ──────────────────────────────────────────────
+// 6.3 YANG  (12 questions)
+// ──────────────────────────────────────────────
+{d:"YANG",q:"What is YANG in the context of network management?",o:["A scripting language for Cisco devices","A data modeling language used to describe the structure of configuration and operational data for NETCONF/RESTCONF","A replacement for BGP route maps","An IETF encryption standard"],a:1,e:"<strong>YANG (RFC 7950)</strong> is a data modeling language that defines the structure, syntax, and semantics of data exchanged via NETCONF and RESTCONF. It is the schema language for model-driven management."},
+{d:"YANG",q:"In YANG, what is the purpose of the 'container' node type?",o:["Stores a single scalar value","Groups related data nodes without requiring a key or having a value itself","Defines a repeatable list with a unique key","Restricts a leaf to specific enumerated values"],a:1,e:"A YANG <strong>container</strong> is a grouping node. It has no value itself but contains child nodes (leaves, leaf-lists, nested containers, lists). Example: <code>container interface { leaf name; leaf enabled; }</code>"},
+{d:"YANG",q:"Which YANG statement identifies the unique key for instances in a list?",o:["unique","identity","key","index"],a:2,e:"The <strong>key</strong> statement in a YANG list designates one or more leaf values as the unique identifier for list entries. This is analogous to a primary key in a relational database."},
+{d:"YANG",q:"What encoding does NETCONF use natively to carry YANG-modeled data?",o:["JSON","Protobuf","XML","CBOR"],a:2,e:"NETCONF (RFC 6241) mandates <strong>XML encoding</strong>. RESTCONF (RFC 8040) supports both XML (application/yang-data+xml) and JSON (application/yang-data+json). gNMI uses Protobuf or JSON."},
+{d:"YANG",q:"Which command on IOS-XE displays all YANG modules supported by the device with their revision dates?",o:["show yang modules","show netconf-yang modules","show restconf modules","show yang capabilities"],a:1,e:"<strong>show netconf-yang modules</strong> lists all YANG modules supported, their namespaces, and revision dates. This is essential before building NETCONF RPCs to ensure the module exists on the target device."},
+{d:"YANG",q:"What does the YANG 'leaf-list' type represent?",o:["A list with a key identifier","Multiple scalar values of the same type without keys","A container with optional child nodes","A choice between different data types"],a:1,e:"A <strong>leaf-list</strong> holds zero or more values of the same type without requiring keys. Example: a list of DNS server IPs or SNMP community strings. Contrast with 'list' which has structured entries with keys."},
+{d:"YANG",q:"Which YANG feature allows a node to be conditionally present only when an XPath expression evaluates to true?",o:["must","when","presence","mandatory"],a:1,e:"The <strong>when</strong> statement makes a node conditional — it only exists in the data tree if the specified XPath condition is true. 'must' validates a constraint that must always be true when the node is present."},
+{d:"YANG",q:"What is the purpose of a YANG 'grouping' statement?",o:["Defines mandatory configuration nodes","Creates a reusable schema fragment referenced via 'uses' statement","Specifies list key ordering","Restricts a leaf to a numeric range"],a:1,e:"<strong>grouping</strong> defines a reusable set of nodes. Other parts of the YANG model reference it with <strong>uses</strong>. This promotes reuse and consistency — similar to a template or class in programming."},
+{d:"YANG",q:"Which benefit does YANG data modeling provide over traditional CLI-based management?",o:["Faster CLI command processing","Structured, machine-readable schemas enabling automated validation, parsing, and vendor-agnostic tooling","Lower CPU usage on managed devices","Eliminates the need for authentication"],a:1,e:"YANG provides <strong>structured schemas</strong> that allow tools to validate configurations programmatically before applying them, parse responses as data structures, and build vendor-agnostic automation pipelines."},
+{d:"YANG",q:"What is the YANG 'revision' statement used for?",o:["Specifies the YANG specification version (1.0 or 1.1)","Records the date and description of a module update for version tracking","Defines the vendor that created the module","Sets the encoding format for the module"],a:1,e:"The <strong>revision</strong> statement records the date (YYYY-MM-DD) and change description for each module update. Clients should check the revision to ensure compatibility with expected module features."},
+{d:"YANG",q:"Which XPath filter in a NETCONF get-config selects only interface GigabitEthernet1?",o:["<filter>/interfaces/interface</filter>","<filter type='subtree'><interfaces><interface><name>GigabitEthernet1</name></interface></interfaces></filter>","<filter type='xpath' select='/interface[1]'/>","<filter type='subtree'><GigabitEthernet1/></filter>"],a:1,e:"NETCONF subtree filters use XML element hierarchy. To select a specific list entry, include the <strong>key element</strong> (<name>) inside the filter. XPath filters use 'type=xpath select=...' with an XPath expression."},
+{d:"YANG",q:"Which protocol infers that a YANG data model is being used based on the blueprint?",o:["SNMP","NX-API CLI","RESTCONF","Syslog"],a:2,e:"<strong>RESTCONF</strong> is inherently YANG-based (RFC 8040). NETCONF also uses YANG. SNMP uses MIBs. The presence of /restconf/data/ URIs with module:node syntax implies YANG modeling."},
+
+// ──────────────────────────────────────────────
+// 6.4 APIs  (15 questions)
+// ──────────────────────────────────────────────
+{d:"API",q:"What is the first API call required to interact with Cisco Catalyst Center?",o:["GET /dna/intent/api/v1/network-device","POST /dna/system/api/v1/auth/token with Basic Auth credentials","GET /dna/intent/api/v1/site","POST /dna/intent/api/v1/network-device/provision"],a:1,e:"Authentication is always first: <strong>POST /dna/system/api/v1/auth/token</strong> with Base64-encoded username:password in the Authorization header. The returned token is used in all subsequent requests as X-Auth-Token."},
+{d:"API",q:"Which HTTP header must be included in every Catalyst Center API request after authentication?",o:["Authorization: Bearer <token>","X-Auth-Token: <token>","API-Key: <token>","Cookie: JSESSIONID=<token>"],a:1,e:"Catalyst Center uses the proprietary header <strong>X-Auth-Token: &lt;jwt-token&gt;</strong>. This differs from the standard OAuth Bearer scheme. The token expires and must be refreshed periodically."},
+{d:"API",q:"Which Catalyst Center API endpoint retrieves the complete list of managed network devices?",o:["/dna/intent/api/v1/topology/physical-topology","/dna/intent/api/v1/network-device","/dna/intent/api/v1/site-health","/dna/system/api/v1/network-device"],a:1,e:"<strong>GET /dna/intent/api/v1/network-device</strong> returns the device inventory. Use query parameters like ?hostname=R1 or ?managementIpAddress= to filter results."},
+{d:"API",q:"Which Catalyst Center API is used to check the reachability status of a specific device?",o:["GET /dna/intent/api/v1/network-device/{id}/config","GET /dna/intent/api/v1/network-device/{id}","GET /dna/intent/api/v1/network-device/count","POST /dna/intent/api/v1/network-device/sync"],a:1,e:"<strong>GET /dna/intent/api/v1/network-device/{id}</strong> returns detailed info for a specific device including 'reachabilityStatus' (Reachable/Unreachable) and 'reachabilityFailureReason'."},
+{d:"API",q:"Which vManage API endpoint is used for initial session authentication?",o:["POST /dataservice/auth/token","GET /dataservice/device","POST /j_security_check","GET /v1/auth/login"],a:2,e:"vManage uses form-based auth via <strong>POST /j_security_check</strong> with j_username and j_password fields. The response sets a JSESSIONID cookie used for subsequent API calls. Some versions also require a CSRF token."},
+{d:"API",q:"Which vManage endpoint returns real-time device statistics including CPU and memory?",o:["/dataservice/template/device","/dataservice/device/hardwarehealth/detail","/dataservice/statistics/device","/dataservice/device/action/template/push"],a:2,e:"<strong>/dataservice/statistics/device</strong> provides operational statistics. /dataservice/device/hardwarehealth/detail provides hardware health. /dataservice/template/device handles configuration templates."},
+{d:"API",q:"What is the Catalyst Center 'Intent API' designed to do?",o:["Monitor SNMP traps in real-time","Translate business intent into device configuration and automate network provisioning","Replace CLI on all managed devices","Provide raw SSH access to devices"],a:1,e:"The <strong>Intent API</strong> is Catalyst Center's primary northbound API. It abstracts network complexity and allows operators to express what they want (intent) — provisioning, policies, templates — without device-level specifics."},
+{d:"API",q:"Which SD-WAN component provides the northbound REST API for vManage automation?",o:["vEdge","vBond","vSmart","vManage"],a:3,e:"<strong>vManage</strong> is the management plane with GUI and full REST API. vSmart handles policy/routing distribution. vBond orchestrates onboarding. vEdge/cEdge are the WAN edge data plane devices."},
+{d:"API",q:"What does the Catalyst Center API response field 'reachabilityFailureReason: Authentication Failed' indicate?",o:["The Catalyst Center server cannot be reached","Catalyst Center cannot authenticate to the device (wrong credentials)","The device's SNMP is misconfigured","The API token has expired"],a:1,e:"'Authentication Failed' in reachabilityFailureReason means Catalyst Center has <strong>incorrect credentials configured for that device</strong>. It can reach the device IP but cannot log in. Fix the device credential profile."},
+{d:"API",q:"Which Catalyst Center API feature uses AI/ML to baseline network behavior and identify anomalies?",o:["SWIM","Path Trace","AI Network Analytics / Assurance","Command Runner"],a:2,e:"Catalyst Center <strong>AI Network Analytics</strong> uses machine learning to establish dynamic baselines for clients, applications, and infrastructure. Deviations trigger issues with root cause analysis and guided remediation."},
+{d:"API",q:"What is the function of the Catalyst Center Template Editor API?",o:["Retrieves running configurations from devices","Creates and deploys parameterized Jinja2/Velocity configuration templates to devices","Manages software upgrades","Monitors network topology changes"],a:1,e:"The <strong>Template Editor API</strong> allows creating configuration templates with variables (using Velocity or Jinja2) and deploying them to multiple devices with device-specific values — enabling standardized configuration deployment at scale."},
+{d:"API",q:"In the vManage API, which operation attaches a feature template to a list of WAN edge devices?",o:["GET /dataservice/template/device/object/{id}","POST /dataservice/template/device/config/attachfeature","DELETE /dataservice/template/device/{id}","GET /dataservice/device"],a:1,e:"<strong>POST /dataservice/template/device/config/attachfeature</strong> with a payload containing the template ID and target device list triggers template attachment. The response includes a task ID to track the operation's progress."},
+{d:"API",q:"Catalyst Center's physical network hierarchy is structured by:",o:["Device role (access, distribution, core)","Geographic location (Global → Area → Building → Floor)","VLAN assignment","BGP AS number"],a:1,e:"Catalyst Center organizes devices in a <strong>location hierarchy</strong>: Global → Area → Building → Floor. This allows location-based policy application, RF planning, and logical grouping of devices for management."},
+{d:"API",q:"What does the Catalyst Center SWIM (Software Image Management) workflow manage?",o:["SNMP trap collection","Device software image compliance checking, distribution, and upgrade automation","NetFlow data collection","BGP routing policy"],a:1,e:"<strong>SWIM</strong> manages the entire software lifecycle: maintaining a golden image repository, checking device compliance against golden images, distributing images to devices, and automating upgrades with pre/post-checks."},
+{d:"API",q:"What does Catalyst Center's southbound API provide?",o:["Interface to business applications for intent expression","Interface between the controller and network devices for configuration and telemetry","REST API for external orchestration systems","Authentication services for end users"],a:1,e:"<strong>Southbound APIs</strong> (NETCONF, CLI, SNMP, REST) communicate with the network devices. Northbound APIs (REST/Intent API) communicate with applications and orchestration systems above the controller."},
+
+// ──────────────────────────────────────────────
+// 6.5 REST / RESTCONF  (12 questions)
+// ──────────────────────────────────────────────
+{d:"REST",q:"A RESTCONF GET request returns HTTP 404. What does this indicate?",o:["Authentication failed","The requested YANG node or resource does not exist on the device","Internal server error","Method not allowed"],a:1,e:"<strong>404 Not Found</strong> means the specified RESTCONF URI path does not map to an existing YANG node or configured resource. Check the module name, node path, and list key in the URI."},
+{d:"REST",q:"Which HTTP method in RESTCONF applies partial modifications to an existing resource (without replacing it entirely)?",o:["POST","PUT","PATCH","DELETE"],a:2,e:"<strong>PATCH</strong> applies partial updates — only the specified elements are changed. <strong>PUT</strong> replaces the entire resource. Using PUT when you intend PATCH can accidentally delete unconfigured attributes."},
+{d:"REST",q:"What HTTP status code is returned by RESTCONF after a successful DELETE operation?",o:["200 OK","201 Created","204 No Content","202 Accepted"],a:2,e:"A successful RESTCONF DELETE returns <strong>204 No Content</strong>, indicating success with no response body. Code 200 includes a body. Code 204 is the standard REST success for DELETE/PUT/PATCH with no return data."},
+{d:"REST",q:"Which IOS-XE global command enables the RESTCONF agent?",o:["ip http restconf","restconf","ip restconf enable","netconf-yang restconf"],a:1,e:"The single global command <strong>restconf</strong> enables the RESTCONF agent on IOS-XE. HTTPS (ip http secure-server) is also required since RESTCONF operates over HTTPS (TCP 443)."},
+{d:"REST",q:"What is the RESTCONF base URI path for configuration data on IOS-XE?",o:["/api/data/","/netconf/data/","/restconf/data/","/yang/config/"],a:2,e:"RESTCONF RFC 8040 defines <strong>/restconf/data/</strong> as the root for configuration and state data. Operations (RPCs) are under /restconf/operations/. The root is discovered via /restconf/.well-known/host-meta."},
+{d:"REST",q:"A script sends a RESTCONF PATCH with application/yang-data+json and receives 409. What is the likely cause?",o:["Wrong credentials","The resource doesn't exist","Configuration conflict or constraint violation","Syntax error in the JSON body"],a:2,e:"HTTP <strong>409 Conflict</strong> indicates the requested change conflicts with the current resource state — e.g., a uniqueness constraint violation, a dependency not met, or a concurrent modification conflict."},
+{d:"REST",q:"Which REST API security method should be used in production to prevent MITM attacks?",o:["Basic Auth over HTTP","API Key in URL query string","HTTPS with SSL/TLS certificate validation","MD5 hash of request body"],a:2,e:"<strong>HTTPS with proper TLS certificate validation</strong> is mandatory in production. It encrypts traffic (preventing eavesdropping) and authenticates the server (preventing MITM). HTTP basic auth without TLS sends credentials in cleartext."},
+{d:"REST",q:"What does HTTP status 401 mean in the context of a Catalyst Center API call?",o:["Resource not found","Rate limit exceeded","Authentication failed — token is missing, invalid, or expired","Server-side error"],a:2,e:"<strong>401 Unauthorized</strong> means the authentication credentials are invalid or missing. For Catalyst Center, re-authenticate with POST /dna/system/api/v1/auth/token to get a fresh X-Auth-Token."},
+{d:"REST",q:"Which RESTCONF query parameter limits the response to specific leaf nodes, reducing payload size?",o:["?depth=","?filter=","?fields=","?select="],a:2,e:"The <strong>?fields=</strong> query parameter (RFC 8040 Section 4.8.3) restricts the response to named leaves. Example: ?fields=name;enabled;ip-address returns only those three fields from an interface object."},
+{d:"REST",q:"The response code 204 was returned when a RESTCONF DELETE was performed on a loopback interface. This means:",o:["The interface was not found","The DELETE method is not supported","The interface was successfully deleted; there is no response body","The request is queued for processing"],a:2,e:"<strong>204 No Content</strong> confirms a successful operation with no response body. For DELETE in RESTCONF, this is the expected success code. The loopback interface has been removed from the configuration."},
+{d:"REST",q:"What protocol does REST API use to secure the communication channel?",o:["SSH","HTTPS (TLS)","DTLS","IPsec"],a:1,e:"REST APIs use <strong>HTTPS (HTTP over TLS)</strong> for secure communication. TLS provides encryption, integrity, and server authentication. HTTP alone (without TLS) exposes credentials and data to interception."},
+{d:"REST",q:"In the RESTCONF URI '/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1', what does 'ietf-interfaces:interfaces' represent?",o:["The server hostname","The YANG module name prefix and top-level container path","The VLAN ID for the interface","The RESTCONF API version"],a:1,e:"<strong>module-name:node-name</strong> is the RESTCONF URI format. 'ietf-interfaces' is the YANG module name; 'interfaces' is the top-level container. This prefix notation resolves namespace ambiguity between different modules."},
+
+// ──────────────────────────────────────────────
+// 6.6 EEM  (13 questions)
+// ──────────────────────────────────────────────
+{d:"EEM",q:"What is Cisco EEM (Embedded Event Manager) used for?",o:["Replacing Ansible for external automation","On-device event-driven automation — detecting events and executing actions without external management","Providing a Python runtime on routers","Streaming telemetry to a collector"],a:1,e:"<strong>EEM</strong> monitors device events (syslog patterns, timers, SNMP thresholds, CLI commands) and triggers automated actions (CLI commands, email, syslog, SNMP traps) entirely on-device."},
+{d:"EEM",q:"Which EEM event detector triggers an applet when a specific syslog message pattern is detected?",o:["event timer watchdog","event snmp oid","event syslog pattern","event cli pattern"],a:2,e:"<strong>event syslog pattern \"&lt;regex&gt;\"</strong> triggers the applet when a syslog message matches the regular expression. This is the most common EEM trigger for operational automation."},
+{d:"EEM",q:"What EEM action executes a CLI command from within an applet?",o:["action 1.0 cli run","action 1.0 cli command \"cmd\"","action exec \"cmd\"","action 1.0 run command \"cmd\""],a:1,e:"<strong>action &lt;label&gt; cli command \"&lt;cmd&gt;\"</strong> executes a CLI command. Example: 'action 1.0 cli command \"show interface brief\"'. The output is available in $_cli_result."},
+{d:"EEM",q:"An EEM applet uses 'event none'. How is this applet triggered?",o:["Automatically at device boot","Never — it is disabled","Manually with: event manager run <applet-name>","When any log message occurs"],a:2,e:"<strong>event none</strong> means no automatic trigger. The applet is invoked manually from the CLI with <strong>event manager run &lt;name&gt;</strong>. Useful for on-demand tasks or testing."},
+{d:"EEM",q:"Which EEM timer type triggers an applet at a scheduled time using cron-style syntax?",o:["event timer watchdog","event timer cron","event timer countdown","event timer periodic"],a:1,e:"<strong>event timer cron cron-entry \"&lt;cron-spec&gt;\"</strong> uses cron syntax (minute hour day month weekday) for scheduled execution. watchdog triggers periodically; countdown fires once after a delay."},
+{d:"EEM",q:"What does 'sync yes' mean in an EEM CLI event trigger?",o:["The applet runs asynchronously in the background","The triggering CLI command is blocked until the EEM applet completes execution","The event fires only once","The applet syncs state with a peer router"],a:1,e:"<strong>sync yes</strong> blocks the triggering CLI command until the EEM applet finishes. <strong>sync no</strong> (default) runs the applet concurrently. sync yes is useful when the applet must validate or modify the command before it executes."},
+{d:"EEM",q:"Which EEM action sends an email notification from an applet?",o:["action 1.0 email","action 1.0 notify email","action 1.0 mail server X.X.X.X to Y from Z subject S body B","action 1.0 smtp send"],a:2,e:"<strong>action &lt;n&gt; mail server &lt;ip&gt; to &lt;addr&gt; from &lt;addr&gt; subject &lt;text&gt; body &lt;text&gt;</strong> sends email. Requires 'event manager mail-server &lt;ip&gt;' global configuration."},
+{d:"EEM",q:"What EEM action generates a user-defined syslog message?",o:["action 1.0 syslog msg \"text\"","action 1.0 log \"text\"","action 1.0 write syslog \"text\"","action 1.0 notify syslog \"text\""],a:0,e:"<strong>action &lt;n&gt; syslog msg \"&lt;message&gt;\"</strong> generates a syslog entry from the EEM applet. The severity can also be specified. This is commonly used for operational logging and alerting."},
+{d:"EEM",q:"Which EEM event detector fires when an SNMP OID crosses a defined threshold?",o:["event syslog","event cli pattern","event snmp oid","event ipsla"],a:2,e:"<strong>event snmp oid &lt;OID&gt; get-type &lt;type&gt; entry-op &lt;op&gt; entry-val &lt;value&gt;</strong> triggers when the polled OID meets the specified condition. This enables threshold-based automation using SNMP data."},
+{d:"EEM",q:"A CCNP engineer needs an applet to capture the output of 'show version' and store it in a variable. Which two actions achieve this?",o:["action cli command / action set","action exec / action puts","action cli command \"show version\" / action regexp to parse $_cli_result","action run \"show version\" / action capture"],a:2,e:"First: <strong>action cli command \"show version\"</strong> stores output in <strong>$_cli_result</strong>. Then: <strong>action regexp</strong> or <strong>action set</strong> can parse/store specific values from that output string."},
+{d:"EEM",q:"What privilege level is typically required for an EEM applet to execute privileged EXEC commands?",o:["Privilege 1 (user mode)","Privilege 7","Privilege 15","No privilege — EEM bypasses AAA"],a:2,e:"EEM applets run under the <strong>privilege 15</strong> context by default when 'event manager applet X authorization bypass' is used, or when the triggering user has priv 15. This is required for show and configuration commands."},
+{d:"EEM",q:"Which global command specifies the directory containing user-defined EEM Tcl policy scripts?",o:["event manager directory user policy flash:/eem/","event manager policy-dir flash:/eem/","event manager applet-dir flash:/eem/","event manager tcl-dir flash:/eem/"],a:0,e:"<strong>event manager directory user policy &lt;path&gt;</strong> sets the directory for full Tcl-based EEM policy scripts. EEM applets (the keyword-based variety) don't require a directory — they're stored in the running config."},
+{d:"EEM",q:"What is the EEM 'action exit-status' used for?",o:["Terminates the router process","Specifies the exit code returned when the applet completes — non-zero can indicate failure","Exits from a specific CLI exec session","Logs the applet completion to syslog"],a:1,e:"<strong>action &lt;n&gt; exit-status &lt;value&gt;</strong> sets the return code when the applet terminates. A non-zero value signals failure to calling processes. Combined with sync yes, this can prevent a CLI command from executing."},
+
+// ──────────────────────────────────────────────
+// 6.7 ORCHESTRATION  (13 questions)
+// ──────────────────────────────────────────────
+{d:"ORCH",q:"What is the fundamental difference between agent-based and agentless orchestration?",o:["Agent-based tools use SSH; agentless use SNMP","Agent-based tools require software (daemon) installed on each managed node; agentless connect via existing protocols like SSH","Agentless tools only work with Linux","Agent-based tools are always more secure"],a:1,e:"<strong>Agent-based</strong> (Puppet, Chef) require a daemon on each managed node. <strong>Agentless</strong> (Ansible, NAPALM) use SSH/APIs with no pre-installed agent. Agentless is simpler to deploy; agents provide real-time drift detection."},
+{d:"ORCH",q:"Which orchestration tool is agentless and uses SSH/network APIs with YAML playbooks?",o:["Puppet","Chef","SaltStack (default)","Ansible"],a:3,e:"<strong>Ansible</strong> is agentless — it pushes configurations over SSH without requiring any agent on managed devices. Playbooks are written in <strong>YAML</strong>. It uses a push model where the control node initiates operations."},
+{d:"ORCH",q:"What is the primary advantage of agent-based tools like Puppet over agentless tools like Ansible?",o:["Simpler initial setup","No software required on endpoints","Continuous desired-state enforcement and real-time drift detection/remediation","Lower network bandwidth usage"],a:2,e:"Puppet agents periodically compare local state to the desired catalog and self-heal drifts automatically — <strong>continuous compliance</strong>. Ansible only enforces state when a playbook is explicitly run."},
+{d:"ORCH",q:"In Ansible, what is the 'inventory' file?",o:["A YAML file defining playbook tasks","A list of managed hosts and groups with optional variables","A Jinja2 template for device configuration","A record of previous playbook runs"],a:1,e:"The Ansible <strong>inventory</strong> defines hosts and groups (e.g., [routers], [switches]) that playbooks target. It can be static (INI/YAML file) or dynamic (a script querying a CMDB or cloud API)."},
+{d:"ORCH",q:"Which Ansible connection plugin is recommended for Cisco IOS/IOS-XE devices using the cisco.ios collection?",o:["paramiko","ssh","network_cli","httpapi"],a:2,e:"<strong>network_cli</strong> is the connection plugin for CLI-based network devices. It handles IOS prompt patterns, enable mode, and paging. httpapi is used for REST-based platforms like NX-OS with RESTCONF or APIC."},
+{d:"ORCH",q:"What is idempotency in network orchestration?",o:["Encrypting playbook variables","Running the same playbook N times produces the same desired end state as running it once","Each playbook run creates a new config version","Orchestration tools require re-authentication on every run"],a:1,e:"An <strong>idempotent</strong> operation has the same effect regardless of how many times it is applied. Ansible checks current state before making changes — if the desired state already exists, no change is made. This prevents unintended duplication."},
+{d:"ORCH",q:"What does Ansible's 'register' keyword do in a task?",o:["Registers the device in inventory","Saves the task's output (stdout, rc, changed) to a named variable for use in subsequent tasks","Creates a new user account on the device","Schedules a task for later execution"],a:1,e:"<strong>register: varname</strong> captures the task result into a variable. This variable can then be used in when conditions, debug tasks, or further processing. Essential for capturing show command output."},
+{d:"ORCH",q:"Which characteristic distinguishes Ansible from Chef?",o:["Both are agentless","Ansible is agentless and push-based with YAML; Chef requires a chef-client agent and uses Ruby DSL","Ansible uses Ruby; Chef uses YAML","Chef is agentless; Ansible requires agents"],a:1,e:"<strong>Ansible</strong>: agentless, push-based, YAML playbooks. <strong>Chef</strong>: agent-based (chef-client), pull-based, Ruby DSL cookbooks. This is a key ENCOR exam distinction for the agent vs. agentless comparison."},
+{d:"ORCH",q:"In configuration management, what is 'mutable infrastructure'?",o:["Infrastructure that changes over time through in-place updates to existing systems","Infrastructure that is replaced rather than modified when changes are needed","Infrastructure that cannot be changed","Infrastructure managed by Terraform"],a:0,e:"<strong>Mutable infrastructure</strong> is updated in place (Ansible, Chef, Puppet managing running systems). <strong>Immutable infrastructure</strong> replaces instances entirely when changes are needed (Terraform provisioning new VMs)."},
+{d:"ORCH",q:"What is the primary use case of Terraform compared to Ansible?",o:["Terraform manages software packages; Ansible manages hardware","Terraform provisions infrastructure (create/modify/destroy resources with state tracking); Ansible configures existing systems","Both do exactly the same thing","Terraform requires agents; Ansible does not"],a:1,e:"<strong>Terraform</strong> focuses on infrastructure provisioning (IaC) with a state file tracking deployed resources. <strong>Ansible</strong> configures existing systems. They complement each other: Terraform provisions, Ansible configures."},
+{d:"ORCH",q:"What does 'immutable infrastructure' mean in the context of orchestration?",o:["All infrastructure is encrypted","Instead of modifying existing systems, new infrastructure is provisioned with desired state and old systems are replaced","Infrastructure that cannot be automated","Infrastructure with immutable access controls"],a:1,e:"<strong>Immutable infrastructure</strong> (used by orchestration/Terraform): when a change is needed, new instances are provisioned and old ones destroyed. No in-place modifications. This ensures consistency and eliminates configuration drift."},
+{d:"ORCH",q:"Which Ansible keyword triggers an action (like restarting a service) only when a preceding task reports a change?",o:["when","loop","register","notify / handlers"],a:3,e:"<strong>notify</strong> triggers a named <strong>handler</strong> when the task reports 'changed=true'. Handlers run once at the end of the play. Example: a config change task notifies a 'restart OSPF' handler."},
+{d:"ORCH",q:"What is the primary scalability disadvantage of agentless tools for very large environments?",o:["They cannot handle multi-vendor environments","SSH connection overhead per task and lack of continuous state monitoring limit scale; agents scale better for large real-time compliance","They require more storage","They cannot execute configuration changes"],a:1,e:"Agentless tools open new <strong>SSH connections per task per device</strong>, which is slow at scale. They also lack persistent agents for real-time drift detection. Agent-based tools maintain persistent connections and enforce compliance continuously."},
+
+]; // end ALL
+
+// ════════════ SHUFFLE ════════════
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
   }
-  type();
+  return arr;
 }
 
-function updateSql() { typeSql(sqlQueries[queryType.value] || sqlQueries.sum); }
-queryType.addEventListener('change', updateSql);
-updateSql();
+// ════════════ STATE ════════════
+let questions=[]; // shuffled order
+let answered=0,correct=0,wrong=0;
+let domainStats={}; // {domain:{ans:0,ok:0}}
 
-/* Scenarios */
-function getScenario(volume, type) {
-  const s = volume / 1000000;
-  if (type === 'sum') return {
-    rowTime: 1.4*s, colTime: 0.08*s,
-    rowRead: '100%', colRead: '40%',
-    rowText: 'Lee YEAR, CATEGORY, REGION, AMOUNT e ID en cada fila.',
-    colText: 'Lee solo YEAR y AMOUNT para filtrar y sumar.',
-    rowSteps: [
-      'Recorre cada fila completa de la tabla sales.',
-      'Lee todas las columnas aunque la consulta use pocas.',
-      'Evalúa la condición YEAR = 2024 fila por fila.',
-      'Extrae AMOUNT de las filas que cumplen el filtro.',
-      'Acumula el total final y devuelve el resultado.'
-    ],
-    colSteps: [
-      'Localiza únicamente las columnas YEAR y AMOUNT.',
-      'Escanea la columna YEAR para aplicar el filtro 2024.',
-      'Descarta columnas irrelevantes como ID, CATEGORY y REGION.',
-      'Lee AMOUNT solo en los registros filtrados.',
-      'Suma los valores y devuelve el resultado.'
-    ]
-  };
-  if (type === 'avg') return {
-    rowTime: 1.8*s, colTime: 0.12*s,
-    rowRead: '100%', colRead: '40%',
-    rowText: 'Lee todas las columnas aunque solo agrupa por CATEGORY y usa AMOUNT.',
-    colText: 'Lee solo CATEGORY y AMOUNT para calcular el promedio agrupado.',
-    rowSteps: [
-      'Recorre filas completas para cada registro.',
-      'Lee todas las columnas de la fila aunque no se ocupen.',
-      'Toma CATEGORY y AMOUNT desde cada fila leída.',
-      'Agrupa los registros por categoría.',
-      'Calcula el promedio final por grupo.'
-    ],
-    colSteps: [
-      'Accede solo a las columnas CATEGORY y AMOUNT.',
-      'Ignora columnas no usadas por la consulta.',
-      'Forma grupos por CATEGORY con lectura columnar.',
-      'Procesa los valores AMOUNT en bloques por grupo.',
-      'Calcula el promedio y devuelve el resultado.'
-    ]
-  };
-  return {
-    rowTime: 1.15*s, colTime: 0.06*s,
-    rowRead: '100%', colRead: '20%',
-    rowText: 'Escanea filas completas para revisar la condición REGION.',
-    colText: 'Lee solo la columna REGION para filtrar y contar registros.',
-    rowSteps: [
-      'Lee cada fila completa de la tabla.',
-      'Revisa la columna REGION dentro de cada fila.',
-      'Mantiene el resto de columnas aunque no sean necesarias.',
-      'Cuenta las filas que cumplen la condición.',
-      'Entrega el total de registros encontrados.'
-    ],
-    colSteps: [
-      'Lee solamente la columna REGION.',
-      'Busca el valor Norte directamente en esa columna.',
-      'Evita leer ID, YEAR, CATEGORY y AMOUNT.',
-      'Cuenta los registros coincidentes en el bloque.',
-      'Devuelve el total final.'
-    ]
-  };
-}
-
-/* Spawn sparkle particle on active cells */
-function spawnParticle(cell, color) {
-  const rect = cell.getBoundingClientRect();
-  const p = document.createElement('div');
-  p.className = 'stream-particle';
-  p.style.cssText = `left:${rect.left + rect.width/2 - 2}px; top:${rect.top + rect.height/2}px; background:${color}; position:fixed;`;
-  document.body.appendChild(p);
-  setTimeout(() => p.remove(), 800);
-}
-
-/* Reset */
-function resetVisuals() {
-  [rowGrid, colGrid].forEach(grid => {
-    [...grid.children].forEach((cell, idx) => {
-      cell.classList.remove('active-row','active-column','faded');
-      if (idx >= headers.length) cell.style.opacity = '1';
-    });
-  });
-  rowProgress.style.width = '0%';
-  colProgress.style.width = '0%';
-  rowScanLine.style.width = '0%';
-  colScanLine.style.width = '0%';
-  rowTimeEl.textContent = '0.00 s';
-  colTimeEl.textContent = '0.00 s';
-  rowReadText.textContent = 'Esperando ejecución...';
-  colReadText.textContent = 'Esperando ejecución...';
-  rowLog.innerHTML = '';
-  colLog.innerHTML = '';
-  chart.data.datasets[0].data = [0, 0];
-  chart.update();
-  rowPanel.style.borderColor = 'rgba(244,63,94,0.1)';
-  colPanel.style.borderColor = 'rgba(16,185,129,0.1)';
-  rowPanel.classList.remove('glow-red');
-  colPanel.classList.remove('glow-green');
-}
-
-/* Highlight row grid */
-let lastActiveRowIndex = -1;
-function highlightRows(progress) {
-  const cells = [...rowGrid.children].slice(headers.length);
-  const cols = headers.length;
-  const totalRows = sampleRows.length;
-  const activeRowIndex = Math.min(Math.floor(progress * totalRows), totalRows - 1);
-
-  if (activeRowIndex !== lastActiveRowIndex) {
-    lastActiveRowIndex = activeRowIndex;
-    // Spawn a particle on active row cells
-    cells.filter((_, i) => Math.floor(i / cols) === activeRowIndex)
-         .forEach(cell => spawnParticle(cell, '#f43f5e'));
-  }
-
-  cells.forEach((cell, i) => {
-    const row = Math.floor(i / cols);
-    cell.classList.remove('active-row','faded');
-    if (row < activeRowIndex)      cell.classList.add('faded');
-    else if (row === activeRowIndex) cell.classList.add('active-row');
+// ════════════ DOMAIN CHIPS (header) ════════════
+function buildDomainChips(){
+  const c=document.getElementById('dchips');
+  c.innerHTML='';
+  Object.entries(DOMAINS).forEach(([k,v])=>{
+    const s=document.createElement('span');
+    s.className='dc';
+    s.textContent=v.label;
+    s.style.cssText=`background:${v.color}18;color:${v.color};border:1px solid ${v.color}40`;
+    c.appendChild(s);
   });
 }
 
-/* Highlight column grid */
-let colAnimStarted = false;
-function highlightColumns(progress, type) {
-  const cells = [...colGrid.children].slice(headers.length);
-  const cols = headers.length;
-  const neededCols = type === 'count' ? [3] : type === 'avg' ? [2,4] : [1,4];
-
-  if (progress > 0 && !colAnimStarted) {
-    colAnimStarted = true;
-    cells.filter((_, i) => neededCols.includes(i % cols))
-         .forEach(cell => spawnParticle(cell, '#10b981'));
-  }
-
-  cells.forEach((cell, i) => {
-    const col = i % cols;
-    cell.classList.remove('active-column','faded');
-    if (!neededCols.includes(col)) cell.classList.add('faded');
-    else if (progress > 0)          cell.classList.add('active-column');
+// ════════════ FILTER BUTTONS ════════════
+function buildFilterBtns(){
+  const c=document.getElementById('filter-btns');
+  c.innerHTML='';
+  const all=document.createElement('button');
+  all.className='btn-f active';all.textContent='ALL';all.onclick=()=>filterBy('all',all);
+  c.appendChild(all);
+  Object.entries(DOMAINS).forEach(([k,v])=>{
+    const b=document.createElement('button');
+    b.className='btn-f';b.textContent=k;b.dataset.d=k;
+    b.onclick=()=>filterBy(k,b);
+    c.appendChild(b);
   });
 }
 
-/* Log updater */
-function updateLog(container, steps, progress, engineType) {
-  const visibleSteps = Math.max(1, Math.ceil(progress * steps.length));
-  container.innerHTML = steps.map((step, index) => `
-    <div class="log-line ${index < visibleSteps ? 'active' : ''}">
-      <span class="log-step ${engineType}">${index + 1}</span>
-      <span>${step}</span>
+function filterBy(key,btn){
+  document.querySelectorAll('.btn-f').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.q-card').forEach(c=>{
+    c.classList.toggle('hidden', key!=='all' && c.dataset.d!==key);
+  });
+}
+
+// ════════════ RENDER ════════════
+const KEYS=['A','B','C','D'];
+function renderQuiz(){
+  const m=document.getElementById('qmain');
+  m.innerHTML='';
+  questions.forEach((q,idx)=>{
+    const d=DOMAINS[q.d];
+    const card=document.createElement('div');
+    card.className='q-card';card.id='c'+idx;card.dataset.d=q.d;
+    card.innerHTML=`
+      <div class="q-head">
+        <span class="q-num">Q${String(idx+1).padStart(3,'0')}</span>
+        <span class="q-tag" style="background:${d.color}18;color:${d.color};border:1px solid ${d.color}40">${q.d}</span>
+        <span class="q-text">${q.q}</span>
+      </div>
+      <div class="q-opts" id="o${idx}">
+        ${q.o.map((opt,i)=>`
+          <button class="opt" data-q="${idx}" data-i="${i}" onclick="answer(${idx},${i})">
+            <span class="opt-k">${KEYS[i]}</span><span>${opt}</span>
+          </button>`).join('')}
+      </div>
+      <div class="exp" id="e${idx}"><strong>// Explanation:</strong> ${q.e}<br><span class="ref">Domain: ${d.label}</span></div>`;
+    m.appendChild(card);
+  });
+  // result panel
+  const r=document.createElement('div');
+  r.id='result';
+  r.innerHTML=`
+    <div class="r-pct" id="rpct">—</div>
+    <div class="r-lbl">FINAL SCORE · 200 QUESTIONS</div>
+    <div class="r-msg" id="rmsg"></div>
+    <div class="r-detail" id="rdetail"></div>
+    <div class="r-grid">
+      <div class="r-cell"><div class="r-n" id="rb-ok" style="color:var(--ok)">0</div><div class="r-l">CORRECT</div></div>
+      <div class="r-cell"><div class="r-n" id="rb-ko" style="color:var(--ko)">0</div><div class="r-l">WRONG</div></div>
+      <div class="r-cell"><div class="r-n" id="rb-pct" style="color:var(--t1)">0%</div><div class="r-l">SCORE</div></div>
     </div>
-  `).join('');
+    <div class="r-domain-breakdown" id="rdomains"></div>
+    <button class="btn-retry" onclick="shuffleAndRestart()">// NEW SHUFFLE & RESTART</button>`;
+  m.appendChild(r);
 }
 
-/* Animate timer */
-function animateTimer({ target, el, bar, scanLine, onProgress, onComplete, logContainer, steps, engineType }) {
-  const start    = performance.now();
-  const duration = Math.max(target * 1000, 350);
-
-  function frame(now) {
-    const progress = Math.min((now - start) / duration, 1);
-    el.textContent = `${(target * progress).toFixed(2)} s`;
-    bar.style.width      = `${progress * 100}%`;
-    scanLine.style.width = `${progress * 100}%`;
-    onProgress(progress);
-    updateLog(logContainer, steps, progress, engineType);
-
-    if (progress < 1) {
-      requestAnimationFrame(frame);
-    } else {
-      updateLog(logContainer, steps, 1, engineType);
-      onComplete();
-    }
-  }
-  requestAnimationFrame(frame);
+// ════════════ ANSWER ════════════
+function answer(qIdx,optIdx){
+  const q=questions[qIdx];
+  const card=document.getElementById('c'+qIdx);
+  const opts=document.querySelectorAll('#o'+qIdx+' .opt');
+  const exp=document.getElementById('e'+qIdx);
+  opts.forEach(b=>b.disabled=true);
+  const ok=optIdx===q.a;
+  opts[q.a].classList.add('oc');
+  if(!ok) opts[optIdx].classList.add('ow');
+  card.classList.add(ok?'ok':'ko');
+  exp.classList.add('show');
+  answered++;if(ok)correct++;else wrong++;
+  // domain stats
+  if(!domainStats[q.d]) domainStats[q.d]={ans:0,ok:0};
+  domainStats[q.d].ans++;if(ok) domainStats[q.d].ok++;
+  updateStats();
+  if(answered===questions.length) setTimeout(showResult,600);
 }
 
-/* Animated KPI counter */
-function animateCounter(el, targetText, color) {
-  const num = parseFloat(targetText);
-  if (isNaN(num)) { el.textContent = targetText; return; }
-  const isPercent = targetText.includes('%');
-  const isMult    = targetText.includes('×');
-  const start = performance.now();
-  const duration = 600;
-
-  function tick(now) {
-    const p = Math.min((now - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - p, 3);
-    const val = num * ease;
-    el.textContent = isPercent ? `${Math.round(val)}%` : isMult ? `${val.toFixed(1)}×` : `${val.toFixed(1)}×`;
-    if (p < 1) requestAnimationFrame(tick);
-    else {
-      el.textContent = targetText;
-      el.classList.add('result-flash');
-      setTimeout(() => el.classList.remove('result-flash'), 500);
-    }
-  }
-  requestAnimationFrame(tick);
+function updateStats(){
+  document.getElementById('sv-a').textContent=answered;
+  document.getElementById('sv-ok').textContent=correct;
+  document.getElementById('sv-ko').textContent=wrong;
+  document.getElementById('pb').style.width=(answered/questions.length*100)+'%';
 }
 
-/* Run */
-runBtn.addEventListener('click', () => {
-  resetVisuals();
-  colAnimStarted = false;
-  lastActiveRowIndex = -1;
-  updateSql();
-
-  const volume   = parseInt(dataVolume.value, 10);
-  const type     = queryType.value;
-  const scenario = getScenario(volume, type);
-  const speedup  = (scenario.rowTime / scenario.colTime).toFixed(1);
-
-  rowReadText.textContent = scenario.rowText;
-  colReadText.textContent = scenario.colText;
-  updateLog(rowLog, scenario.rowSteps, 0.01, 'row');
-  updateLog(colLog, scenario.colSteps, 0.01, 'col');
-
-  animateTimer({
-    target: scenario.rowTime, el: rowTimeEl,
-    bar: rowProgress, scanLine: rowScanLine,
-    logContainer: rowLog, steps: scenario.rowSteps,
-    engineType: 'row',
-    onProgress: p => highlightRows(p),
-    onComplete: () => {
-      chart.data.datasets[0].data[0] = scenario.rowTime * 1000;
-      chart.update();
-      rowPanel.classList.add('glow-red');
-      rowPanel.style.borderColor = 'rgba(244,63,94,0.3)';
-      animateCounter(rowReadKpi, scenario.rowRead, '#f43f5e');
-    }
+// ════════════ RESULT ════════════
+function showResult(){
+  const pct=Math.round(correct/questions.length*100);
+  const r=document.getElementById('result');
+  r.classList.add('show');
+  document.getElementById('rpct').textContent=pct+'%';
+  document.getElementById('rb-ok').textContent=correct;
+  document.getElementById('rb-ko').textContent=wrong;
+  document.getElementById('rb-pct').textContent=pct+'%';
+  let msg,detail;
+  if(pct>=85){msg='🏆 Exam Ready — CCNP ENCOR Level';detail=`${correct}/200 correct · Strong across all domains`;}
+  else if(pct>=72){msg='📡 Above Cisco Passing Threshold (~72%)';detail=`${correct}/200 correct · Fine-tune weak areas before exam`;}
+  else if(pct>=60){msg='🔧 Getting Closer';detail=`${correct}/200 correct · Focus on Security, L3, and Automation`;}
+  else{msg='📚 More Study Required';detail=`${correct}/200 correct · Review CCNP Official Cert Guide chapters`;}
+  document.getElementById('rmsg').textContent=msg;
+  document.getElementById('rdetail').textContent=detail;
+  // domain breakdown
+  const db=document.getElementById('rdomains');
+  db.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:12px">// SCORE BY DOMAIN</div>';
+  Object.entries(domainStats).forEach(([k,s])=>{
+    const p=Math.round((s.ok/s.ans)*100);
+    const d=DOMAINS[k];
+    db.innerHTML+=`<div class="r-drow">
+      <span class="r-dname">${k}</span>
+      <div class="r-dbar-wrap"><div class="r-dbar" style="width:${p}%;background:${d.color}"></div></div>
+      <span class="r-dpct">${p}%</span>
+    </div>`;
   });
+  r.scrollIntoView({behavior:'smooth'});
+}
 
-  animateTimer({
-    target: scenario.colTime, el: colTimeEl,
-    bar: colProgress, scanLine: colScanLine,
-    logContainer: colLog, steps: scenario.colSteps,
-    engineType: 'col',
-    onProgress: p => highlightColumns(p, type),
-    onComplete: () => {
-      chart.data.datasets[0].data[1] = scenario.colTime * 1000;
-      chart.update();
-      colPanel.classList.add('glow-green');
-      colPanel.style.borderColor = 'rgba(16,185,129,0.3)';
-      animateCounter(colReadKpi, scenario.colRead, '#10b981');
-      animateCounter(speedupKpi, `${speedup}×`, '#3b82f6');
-    }
-  });
-});
+// ════════════ SHUFFLE & RESTART ════════════
+function shuffleAndRestart(){
+  answered=0;correct=0;wrong=0;domainStats={};
+  questions=shuffle([...ALL]);
+  updateStats();
+  buildFilterBtns();
+  renderQuiz();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ════════════ INIT ════════════
+buildDomainChips();
+shuffleAndRestart(); // initial render with shuffle
 </script>
 </body>
 </html>
