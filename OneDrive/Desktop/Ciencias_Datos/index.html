@@ -1,1159 +1,330 @@
+Copia esto completo en un archivo llamado **`index.html`**:
+
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Pipeline: Fuentes → KG → ML</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
-  <style>
-    :root{
-      --ink:#04080f;
-      --ink2:#08111e;
-      --surface:#0c1625;
-      --card:#101e36;
-      --border:#1e3356;
-      --border2:#2d4d7a;
-      --text:#e8f2ff;
-      --muted:#7a98c4;
-      --dim:#3a5580;
-
-      --teal:#00e8c8;
-      --teal2:#00b89c;
-      --blue:#4a9eff;
-      --blue2:#2d7fe0;
-      --amber:#ffb340;
-      --rose:#ff6b8a;
-      --violet:#b48fff;
-      --green:#4dffa0;
-
-      --glow-teal:0 0 28px rgba(0,232,200,.35);
-      --glow-blue:0 0 28px rgba(74,158,255,.35);
-      --glow-amber:0 0 24px rgba(255,179,64,.3);
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{
-      min-height:100vh;font-family:'Space Grotesk',sans-serif;
-      color:var(--text);background:var(--ink);overflow-x:hidden;
-    }
-
-    /* ── BACKGROUND ── */
-    body::before{
-      content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-      background:
-        radial-gradient(ellipse 60% 45% at 8% 0%,rgba(0,232,200,.08) 0%,transparent 55%),
-        radial-gradient(ellipse 50% 40% at 92% 5%,rgba(74,158,255,.07) 0%,transparent 50%),
-        radial-gradient(ellipse 40% 30% at 50% 100%,rgba(180,143,255,.05) 0%,transparent 50%),
-        repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(255,255,255,.018) 80px),
-        repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(255,255,255,.018) 80px);
-    }
-
-    .wrap{max-width:1140px;margin:0 auto;padding:24px 20px;position:relative;z-index:1}
-
-    /* ── HEADER ── */
-    .hdr{margin-bottom:24px}
-    .hdr-eyebrow{
-      display:inline-flex;align-items:center;gap:8px;
-      font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
-      letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);
-      background:rgba(0,232,200,.07);border:1px solid rgba(0,232,200,.18);
-      border-radius:4px;padding:5px 10px;margin-bottom:10px;
-    }
-    .hdr-eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blip 2s infinite}
-    @keyframes blip{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
-    .hdr h1{
-      font-family:'Syne',sans-serif;font-size:clamp(18px,2.2vw,26px);
-      font-weight:800;line-height:1.15;color:#fff;
-    }
-    .hdr h1 em{font-style:normal;color:var(--teal)}
-    .hdr p{margin-top:7px;color:var(--muted);font-size:13px;line-height:1.6;max-width:700px}
-
-    /* ── CONTROLS ── */
-    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
-    .btn{
-      font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;
-      letter-spacing:.5px;border:none;cursor:pointer;border-radius:8px;
-      padding:9px 16px;transition:all .2s ease;
-    }
-    .btn-primary{
-      background:linear-gradient(135deg,var(--teal2),var(--blue2));
-      color:#fff;box-shadow:0 4px 16px rgba(0,184,156,.25);
-    }
-    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,184,156,.35)}
-    .btn-ghost{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border)}
-    .btn-ghost:hover{background:rgba(255,255,255,.08);color:var(--text)}
-
-    .status-bar{
-      display:flex;align-items:center;gap:10px;margin-bottom:16px;
-      font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
-    }
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:blip 1.6s infinite}
-
-    /* ── SCENE ── */
-    .scene{
-      background:var(--card);
-      border:1px solid var(--border);border-radius:20px;
-      padding:22px;overflow:hidden;
-      box-shadow:0 32px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04);
-    }
-
-    /* ── STAGE ROW ── */
-    .stage-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;position:relative;z-index:2}
-    .stage{
-      background:rgba(255,255,255,.025);border:1px solid var(--border);
-      border-radius:14px;padding:12px 10px;min-height:118px;
-      opacity:.32;transform:translateY(6px);transition:all .5s cubic-bezier(.22,.8,.36,1);
-      position:relative;overflow:hidden;
-    }
-    .stage::after{
-      content:"";position:absolute;inset:0;border-radius:14px;
-      background:linear-gradient(135deg,rgba(255,255,255,.03) 0%,transparent 60%);
-      pointer-events:none;
-    }
-    .stage.active{
-      opacity:1;transform:translateY(0);border-color:rgba(0,232,200,.45);
-      box-shadow:0 0 0 1px rgba(0,232,200,.12),0 12px 32px rgba(0,0,0,.3),
-        inset 0 0 24px rgba(0,232,200,.04);
-    }
-    .stage.done{opacity:.72;transform:translateY(0);border-color:var(--border2)}
-    .stage-num{
-      width:22px;height:22px;border-radius:6px;display:grid;place-items:center;
-      font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
-      background:rgba(255,179,64,.12);color:var(--amber);
-      border:1px solid rgba(255,179,64,.2);margin-bottom:7px;
-    }
-    .stage.active .stage-num{background:rgba(0,232,200,.15);color:var(--teal);border-color:rgba(0,232,200,.3)}
-    .stage.done .stage-num{background:rgba(77,255,160,.1);color:var(--green);border-color:rgba(77,255,160,.2)}
-    .stage h2{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.2}
-    .stage p{color:var(--muted);font-size:10px;line-height:1.45}
-    .stage-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
-    .chip{
-      font-size:8.5px;font-family:'JetBrains Mono',monospace;
-      padding:2px 6px;border-radius:4px;
-      background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);
-    }
-    .stage.active .chip{border-color:rgba(0,232,200,.2);color:rgba(0,232,200,.7)}
-
-    /* shimmer on active */
-    .stage.active::before{
-      content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);
-      transform:skewX(-18deg);animation:shimmer 2.2s linear infinite;
-    }
-    @keyframes shimmer{0%{left:-60%}100%{left:130%}}
-
-    /* ── VITAL MONITOR ── */
-    .conveyor{
-      position:relative;margin:14px 0 0;height:72px;border-radius:12px;
-      border:1px solid var(--border);
-      background:linear-gradient(180deg,rgba(2,8,20,.95),rgba(4,12,28,.98));
-      overflow:hidden;
-    }
-    .conveyor::before{
-      content:"";position:absolute;inset:0;
-      background:repeating-linear-gradient(90deg,transparent 0 59px,rgba(255,255,255,.018) 60px),
-        repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,255,255,.015) 18px);
-      pointer-events:none;
-    }
-    #vitalCanvas{display:block;width:100%;height:100%}
-    .vital-label{
-      position:absolute;left:12px;top:8px;
-      font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;
-      letter-spacing:1.2px;text-transform:uppercase;color:rgba(0,232,200,.5);
-      pointer-events:none;
-    }
-    .vital-stage-lbl{
-      position:absolute;right:12px;top:8px;
-      font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;
-      color:rgba(0,232,200,.45);pointer-events:none;transition:color .4s;
-    }
-    .vtoken{
-      position:absolute;top:50%;transform:translateY(-50%);
-      font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
-      padding:4px 9px;border-radius:6px;white-space:nowrap;
-      pointer-events:none;opacity:0;
-    }
-    .vtoken.run{animation:vtokenMove var(--dur,7s) linear forwards}
-    .vtoken.delayed{animation-delay:var(--delay,0s)}
-    @keyframes vtokenMove{
-      0%{left:-140px;opacity:0}4%{opacity:1}96%{opacity:1}100%{left:calc(100% + 80px);opacity:0}
-    }
-
-    /* ── BEAMS ── */
-    .beam{
-      position:absolute;height:2px;
-      background:linear-gradient(90deg,transparent,var(--teal),transparent);
-      opacity:0;
-    }
-    .beam.run{opacity:1;animation:beamFlash 1.3s ease-in-out infinite}
-    @keyframes beamFlash{0%,100%{opacity:.1;transform:scaleX(.7)}50%{opacity:.8;transform:scaleX(1)}}
-    .b12{left:18%;top:105px;width:14%}
-    .b23{left:37%;top:105px;width:14%}
-    .b34{left:57%;top:105px;width:14%}
-    .b45{left:77%;top:105px;width:14%}
-
-    /* ═══════════════════════════════════
-       DETAIL BOX
-    ═══════════════════════════════════ */
-    #detailBox{
-      margin-top:18px;
-      background:linear-gradient(160deg,rgba(12,22,40,.98),rgba(8,16,30,.98));
-      border:1px solid var(--border2);border-radius:18px;padding:24px;
-      position:relative;overflow:hidden;
-      opacity:0;transform:translateY(16px) scale(.99);
-      transition:opacity .6s cubic-bezier(.22,.8,.36,1),transform .6s cubic-bezier(.22,.8,.36,1);
-      box-shadow:0 28px 64px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04);
-    }
-    #detailBox.visible{opacity:1;transform:translateY(0) scale(1)}
-    #detailBox.hiding{opacity:0;transform:translateY(-10px) scale(.99)}
-    #detailBox::before{
-      content:"";position:absolute;top:0;left:-50%;width:35%;height:100%;
-      background:linear-gradient(90deg,transparent,rgba(0,232,200,.04),transparent);
-      transform:skewX(-20deg);animation:panelGlow 4s linear infinite;
-    }
-    @keyframes panelGlow{0%{left:-50%}100%{left:130%}}
-
-    .detail-eyebrow{
-      font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;
-      letter-spacing:1.8px;text-transform:uppercase;color:var(--teal);
-      margin-bottom:6px;opacity:.8;
-    }
-    #detailTitle{
-      font-family:'Syne',sans-serif;font-size:18px;font-weight:800;
-      color:#fff;margin-bottom:16px;line-height:1.2;
-    }
-    #detailContent{position:relative;z-index:2}
-
-    /* ── STEP 0: SOURCES ── */
-    .src-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .src-card{
-      background:rgba(255,255,255,.03);border:1px solid var(--border);
-      border-radius:14px;padding:18px 14px;text-align:center;
-      opacity:0;transform:translateY(16px) scale(.96);
-      transition:all .45s cubic-bezier(.22,.8,.36,1);
-      position:relative;overflow:hidden;
-    }
-    .src-card.show{opacity:1;transform:translateY(0) scale(1)}
-    .src-card::after{
-      content:"";position:absolute;inset:0;border-radius:14px;
-      background:linear-gradient(135deg,rgba(255,255,255,.04) 0%,transparent 60%);
-    }
-    .src-card:hover{border-color:var(--border2);transform:translateY(-2px) scale(1)!important}
-    .src-icon{font-size:32px;margin-bottom:10px;display:block}
-    .src-card strong{
-      display:block;font-family:'Syne',sans-serif;font-size:13px;
-      font-weight:800;color:#fff;margin-bottom:5px;
-    }
-    .src-card small{font-size:10px;color:var(--muted);line-height:1.5;display:block}
-    .src-badge{
-      display:inline-block;margin-top:10px;font-size:8px;font-weight:700;
-      font-family:'JetBrains Mono',monospace;letter-spacing:.8px;text-transform:uppercase;
-      padding:3px 8px;border-radius:4px;
-    }
-    .badge-bio{background:rgba(0,232,200,.1);color:var(--teal);border:1px solid rgba(0,232,200,.2)}
-    .badge-ds{background:rgba(255,179,64,.1);color:var(--amber);border:1px solid rgba(255,179,64,.2)}
-    .badge-onto{background:rgba(180,143,255,.1);color:var(--violet);border:1px solid rgba(180,143,255,.2)}
-
-    /* ── STEP 1: DATASET ── */
-    .ds-wrap{display:grid;grid-template-columns:1fr 48px 1fr;gap:16px;align-items:center}
-    .ds-box{
-      background:rgba(255,255,255,.025);border:1px solid var(--border);
-      border-radius:14px;padding:14px;min-height:130px;
-    }
-    .ds-box-label{
-      font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;
-      letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;
-      display:flex;align-items:center;gap:6px;
-    }
-    .ds-box-label span{width:6px;height:6px;border-radius:50%;display:inline-block}
-    .tbl{width:100%;border-collapse:collapse;font-size:11px}
-    .tbl th{color:var(--muted);font-weight:600;padding:5px 6px;
-      border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:10px}
-    .tbl td{padding:5px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04);
-      font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)}
-    .tbl .val-yes{color:var(--rose)}.tbl .val-no{color:var(--muted)}
-    .tbl .val-1{color:var(--teal);font-weight:600}.tbl .val-0{color:var(--muted)}
-    .ds-arrow{
-      font-size:22px;color:var(--teal);text-align:center;
-      animation:arrowPulse 1.2s ease-in-out infinite;
-    }
-    @keyframes arrowPulse{0%,100%{opacity:.3;transform:translateX(0)}50%{opacity:1;transform:translateX(5px)}}
-    .ds-clean-note{margin-top:8px;font-size:10px;color:var(--teal);
-      font-family:'JetBrains Mono',monospace;text-align:center}
-    .prep-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
-    .prep-step{
-      background:rgba(0,232,200,.04);border:1px solid rgba(0,232,200,.1);
-      border-radius:12px;padding:12px 10px;text-align:center;
-      opacity:0;transform:translateY(10px);transition:all .4s ease;
-    }
-    .prep-step.show{opacity:1;transform:translateY(0)}
-    .prep-step strong{display:block;font-size:12px;color:var(--teal);margin-bottom:4px}
-    .prep-step small{font-size:10px;color:var(--muted);line-height:1.4}
-
-    /* ── STEP 2: KG ── */
-    .kg-outer{
-      background:radial-gradient(ellipse at 30% 40%,rgba(74,158,255,.06) 0%,transparent 55%),
-        radial-gradient(ellipse at 70% 60%,rgba(0,232,200,.05) 0%,transparent 50%),
-        linear-gradient(180deg,rgba(8,16,32,.9),rgba(4,10,22,.95));
-      border:1px solid var(--border);border-radius:16px;
-      padding:16px;min-height:320px;position:relative;overflow:hidden;margin-top:4px;
-    }
-    .kg-outer::after{
-      content:"";position:absolute;inset:0;
-      background:radial-gradient(circle at 50% 50%,rgba(74,158,255,.04),transparent 60%);
-      animation:kgBreath 4s ease-in-out infinite;pointer-events:none;
-    }
-    @keyframes kgBreath{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
-    .kg-canvas{position:relative;height:280px}
-    .kg-svg{position:absolute;inset:0;width:100%;height:100%;z-index:1;overflow:visible}
-    /* edge paths */
-    .kg-edge{
-      fill:none;stroke-width:1.8;stroke-linecap:round;
-      stroke-dasharray:300;stroke-dashoffset:300;
-      transition:stroke-dashoffset .9s cubic-bezier(.22,.8,.36,1);
-    }
-    .kg-edge.show{stroke-dashoffset:0}
-    .kg-edge.ec-pat{stroke:rgba(74,158,255,.55)}
-    .kg-edge.ec-sym{stroke:rgba(255,107,138,.45)}
-    .kg-edge.ec-dis{stroke:rgba(77,255,160,.45)}
-    .kg-edge.ec-drg{stroke:rgba(180,143,255,.45)}
-    /* edge labels */
-    .kg-elabel{
-      font-family:'JetBrains Mono',monospace;font-size:8px;fill:rgba(200,220,255,.55);
-      opacity:0;transition:opacity .4s ease .6s;
-    }
-    .kg-elabel.show{opacity:1}
-    /* nodes */
-    .kg-node-g{opacity:0;transform:scale(0);transition:all .5s cubic-bezier(.34,1.56,.64,1);transform-origin:center}
-    .kg-node-g.show{opacity:1;transform:scale(1)}
-    .kg-node-circle{
-      filter:drop-shadow(0 0 8px currentColor);
-      transition:filter .3s ease;
-    }
-    .kg-node-g:hover .kg-node-circle{filter:drop-shadow(0 0 16px currentColor) brightness(1.2)}
-    .kg-node-label{
-      font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;
-      fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none;
-    }
-    .kg-node-type{
-      font-family:'JetBrains Mono',monospace;font-size:7px;
-      fill:rgba(255,255,255,.5);text-anchor:middle;
-    }
-
-    /* ── STEP 3: NEO4J ── */
-    .neo-grid{display:grid;grid-template-columns:.85fr 1fr;gap:16px;margin-top:4px;align-items:start}
-    .bridge{
-      background:rgba(255,255,255,.025);border:1px solid var(--border);
-      border-radius:14px;padding:16px;position:relative;overflow:hidden;
-    }
-    .bridge-title{
-      font-family:'Syne',sans-serif;font-size:13px;font-weight:800;
-      color:#fff;margin-bottom:12px;
-    }
-    .bridge-flow{display:flex;flex-direction:column;gap:6px}
-    .bridge-pill{
-      background:rgba(74,158,255,.07);border:1px solid rgba(74,158,255,.18);
-      border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text);
-      position:relative;z-index:1;
-    }
-    .bridge-pill span{color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600}
-    .bridge-arr{text-align:center;color:var(--teal);font-size:12px;opacity:.7}
-    .bridge-note{
-      margin-top:12px;font-size:11px;color:var(--muted);line-height:1.5;
-      border-top:1px solid var(--border);padding-top:10px;
-    }
-    .bridge-note b{color:var(--text)}
-    .neo-right{}
-    .db-card{
-      background:radial-gradient(ellipse at 20% 0%,rgba(0,232,200,.07),transparent 40%),
-        linear-gradient(180deg,rgba(12,24,44,.98),rgba(8,16,32,.98));
-      border:1px solid rgba(0,232,200,.25);border-radius:14px;padding:16px;
-      box-shadow:0 0 0 1px rgba(0,232,200,.05),0 16px 40px rgba(0,0,0,.4);
-    }
-    .db-badge{
-      display:inline-flex;align-items:center;gap:5px;
-      font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;
-      letter-spacing:.8px;text-transform:uppercase;color:var(--teal);
-      background:rgba(0,232,200,.08);border:1px solid rgba(0,232,200,.2);
-      border-radius:4px;padding:4px 8px;margin-bottom:10px;
-    }
-    .db-badge::before{content:"●";margin-right:2px;font-size:7px}
-    .db-card h4{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:5px}
-    .db-card p{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px}
-    .db-tags{display:flex;flex-wrap:wrap;gap:6px}
-    .db-tag{
-      font-size:9px;font-family:'JetBrains Mono',monospace;
-      padding:4px 8px;border-radius:4px;
-      background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);
-    }
-    .db-pulse{
-      height:4px;border-radius:999px;
-      background:linear-gradient(90deg,transparent,var(--teal),transparent);
-      margin-top:12px;opacity:0;transform:translateX(-20px);
-      transition:opacity .5s ease,transform .5s ease;
-      box-shadow:0 0 12px var(--teal);
-    }
-    .db-queries{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
-    .db-q{
-      background:rgba(255,255,255,.025);border:1px solid var(--border);
-      border-radius:8px;padding:8px 10px;
-      font-size:9px;font-family:'JetBrains Mono',monospace;color:#a0b8e0;
-      opacity:0;transform:translateY(6px);transition:all .35s ease;
-    }
-    .db-q.show{opacity:1;transform:translateY(0)}
-
-    /* ── STEP 4: ML ── */
-    .ml-hero{
-      display:flex;flex-direction:column;align-items:center;
-      justify-content:center;padding:40px 20px;text-align:center;
-    }
-    .ml-icon-wrap{
-      width:88px;height:88px;border-radius:50%;
-      background:radial-gradient(circle,rgba(0,232,200,.15),rgba(74,158,255,.1));
-      border:2px solid rgba(0,232,200,.3);
-      display:grid;place-items:center;font-size:42px;
-      box-shadow:var(--glow-teal);
-      animation:mlPulse 2.5s ease-in-out infinite;
-      margin-bottom:20px;
-    }
-    @keyframes mlPulse{0%,100%{box-shadow:var(--glow-teal)}50%{box-shadow:0 0 48px rgba(0,232,200,.55)}}
-    .ml-hero h2{
-      font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
-      color:#fff;margin-bottom:8px;
-    }
-    .ml-hero h2 em{font-style:normal;color:var(--teal)}
-    .ml-hero p{font-size:13px;color:var(--muted);max-width:460px;line-height:1.6}
-
-    /* ── LEGEND ── */
-    .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
-    .legend-item{
-      display:inline-flex;align-items:center;gap:6px;
-      font-size:11px;color:var(--muted);
-      background:rgba(255,255,255,.03);border:1px solid var(--border);
-      padding:5px 10px;border-radius:6px;
-    }
-    .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-
-    @media(max-width:900px){
-      .stage-row{grid-template-columns:repeat(3,1fr)}
-      .src-grid{grid-template-columns:1fr 1fr}
-      .neo-grid{grid-template-columns:1fr}
-      .beam{display:none}
-    }
-    @media(max-width:600px){
-      .stage-row{grid-template-columns:1fr 1fr}
-      .src-grid{grid-template-columns:1fr 1fr}
-      .ds-wrap{grid-template-columns:1fr}
-      .ds-arrow{display:none}
-      .prep-steps{grid-template-columns:1fr}
-      .db-queries{grid-template-columns:1fr}
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quiz CCNP Pro</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif}
+body{min-height:100vh;background:radial-gradient(circle at top left,#00e5ff33,transparent 35%),radial-gradient(circle at bottom right,#7c3aed44,transparent 35%),linear-gradient(135deg,#020617,#0f172a);color:white;padding:25px}
+.app{max-width:1100px;margin:auto}
+header{text-align:center;padding:35px 10px}
+header h1{font-size:3rem;color:#38bdf8}
+header p{color:#cbd5e1;margin-top:10px}
+.panel{background:rgba(15,23,42,.9);border:1px solid #38bdf866;border-radius:24px;padding:25px;box-shadow:0 0 35px #38bdf833}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:15px;margin-bottom:20px}
+.stat{background:#020617;border:1px solid #334155;border-radius:16px;padding:18px;text-align:center}
+.stat strong{display:block;font-size:1.8rem;color:#22d3ee}
+.controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+select,button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+select{background:#020617;color:white;border:1px solid #334155}
+button{background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white}
+button:hover{transform:translateY(-2px)}
+.card{background:linear-gradient(135deg,#111827,#020617);border:1px solid #334155;border-radius:22px;padding:28px}
+.badge{display:inline-block;background:#0e7490;padding:7px 14px;border-radius:999px;margin-bottom:15px}
+.question{font-size:1.45rem;margin-bottom:20px;line-height:1.4}
+.options{display:grid;gap:12px}
+.option{background:#0f172a;border:1px solid #334155;color:white;text-align:left;padding:16px;border-radius:14px}
+.correct{background:#064e3b!important;border-color:#22c55e!important}
+.wrong{background:#7f1d1d!important;border-color:#ef4444!important}
+.feedback{margin-top:18px;font-weight:bold;font-size:1.1rem}
+.footer{margin-top:25px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.secondary{background:#1e293b}
+.progress{height:12px;background:#1e293b;border-radius:999px;overflow:hidden;margin:18px 0}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#22d3ee,#22c55e)}
+@media(max-width:600px){body{padding:14px}header h1{font-size:2.2rem}.question{font-size:1.2rem}}
+</style>
 </head>
+
 <body>
-<div class="wrap">
-  <div class="hdr">
-    <div class="hdr-eyebrow">Ciencias de Datos</div>
-    <h1>Flujo completo: fuentes de datos → KG → <em>Machine Learning</em></h1>
-    <p>Gestión de datos desde la captura hasta el almacenamiento en Neo4j, listo para el proceso de ML.</p>
-  </div>
+<div class="app">
+<header>
+<h1>Quiz CCNP Pro</h1>
+<p>100 preguntas de Routing, Switching, OSPF, BGP, Seguridad, QoS, Wireless y Automatización.</p>
+</header>
 
-  <div class="controls">
-    <button class="btn btn-primary" id="playBtn">▶ Iniciar secuencia</button>
-    <button class="btn btn-ghost" id="pauseBtn">⏸ Pausar</button>
-    <button class="btn btn-ghost" id="resetBtn">↺ Reiniciar</button>
-  </div>
-  <div class="status-bar">
-    <div class="dot"></div>
-    <span id="statusText">Listo para iniciar.</span>
-  </div>
+<main class="panel">
+<div class="stats">
+<div class="stat"><strong id="visits">0</strong>Visitas locales</div>
+<div class="stat"><strong id="total">100</strong>Preguntas</div>
+<div class="stat"><strong id="score">0</strong>Correctas</div>
+<div class="stat"><strong id="current">1</strong>Actual</div>
+<div class="stat"><strong id="percent">0%</strong>Progreso</div>
+</div>
 
-  <div class="scene">
-    <div class="beam b12" id="beam12"></div>
-    <div class="beam b23" id="beam23"></div>
-    <div class="beam b34" id="beam34"></div>
-    <div class="beam b45" id="beam45"></div>
+<div class="controls">
+<select id="categoryFilter">
+<option value="todas">Todas las categorías</option>
+<option value="Routing">Routing</option>
+<option value="Switching">Switching</option>
+<option value="OSPF">OSPF</option>
+<option value="BGP">BGP</option>
+<option value="Seguridad">Seguridad</option>
+<option value="QoS">QoS</option>
+<option value="Wireless">Wireless</option>
+<option value="Automatización">Automatización</option>
+</select>
+<button onclick="restartQuiz()">Reiniciar</button>
+<button onclick="shuffleQuiz()">Mezclar</button>
+</div>
 
-    <div class="stage-row">
-      <article class="stage" id="stage1">
-        <div class="stage-num">01</div>
-        <h2>Consumo de fuentes</h2>
-        <p>Extracción de fuentes biomédicas y dataset de pacientes.</p>
-        <div class="stage-chips">
-          <span class="chip">LitCovid</span><span class="chip">DrugBank</span>
-          <span class="chip">UniProt</span><span class="chip">Kaggle</span>
-        </div>
-      </article>
-      <article class="stage" id="stage2">
-        <div class="stage-num">02</div>
-        <h2>Preparación del dataset</h2>
-        <p>Transformación del dataset antes de integrar al grafo.</p>
-        <div class="stage-chips">
-          <span class="chip">Yes/No→1/0</span><span class="chip">encoding</span>
-        </div>
-      </article>
-      <article class="stage" id="stage3">
-        <div class="stage-num">03</div>
-        <h2>Creación del KG</h2>
-        <p>Integración de fuentes y dataset en el Knowledge Graph.</p>
-        <div class="stage-chips">
-          <span class="chip">RDF</span><span class="chip">HDO</span>
-        </div>
-      </article>
-      <article class="stage" id="stage4">
-        <div class="stage-num">04</div>
-        <h2>Almacenamiento</h2>
-        <p>El grafo se guarda en Neo4j como nodos y relaciones.</p>
-        <div class="stage-chips">
-          <span class="chip">Neo4j</span><span class="chip">Neosemantics</span>
-        </div>
-      </article>
-      <article class="stage" id="stage5">
-        <div class="stage-num">05</div>
-        <h2>Inicio de ML</h2>
-        <p>Con el grafo almacenado, inicia el proceso de ML.</p>
-        <div class="stage-chips">
-          <span class="chip">ML</span><span class="chip">KG enrichment</span>
-        </div>
-      </article>
-    </div>
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
 
-    <div class="conveyor" id="conveyorWrap">
-      <canvas id="vitalCanvas"></canvas>
-      <div class="vital-label">MONITOR · PIPELINE</div>
-      <div class="vital-stage-lbl" id="vitalStageLbl">IDLE</div>
-      <div id="tokenLayer"></div>
-    </div>
-
-    <div id="detailBox">
-      <div class="detail-eyebrow" id="detailEye">ETAPA 01</div>
-      <div id="detailTitle">Consumo de fuentes</div>
-      <div id="detailContent"></div>
-    </div>
-
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>Fuentes biomédicas</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Dataset de pacientes</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>Nodo paciente</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div>Nodo síntoma</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Nodo enfermedad</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--violet)"></div>Nodo fármaco</div>
-    </div>
-  </div>
+<section class="card">
+<span class="badge" id="category"></span>
+<h2 class="question" id="question"></h2>
+<div class="options" id="options"></div>
+<p class="feedback" id="feedback"></p>
+<div class="footer">
+<button class="secondary" onclick="previousQuestion()">Anterior</button>
+<button onclick="nextQuestion()">Siguiente</button>
+</div>
+</section>
+</main>
 </div>
 
 <script>
-const stages = [1,2,3,4,5].map(n=>document.getElementById('stage'+n));
-const beams   = ['beam12','beam23','beam34','beam45'].map(id=>document.getElementById(id));
-const statusEl = document.getElementById('statusText');
-const detailBox = document.getElementById('detailBox');
-const detailEye = document.getElementById('detailEye');
-const detailTitle = document.getElementById('detailTitle');
-const detailContent = document.getElementById('detailContent');
-const vitalStageLbl = document.getElementById('vitalStageLbl');
-const tokenLayer = document.getElementById('tokenLayer');
+function contadorVisitas(){
+let visitas=localStorage.getItem("visitas_ccnp");
+visitas=visitas?parseInt(visitas)+1:1;
+localStorage.setItem("visitas_ccnp",visitas);
+document.getElementById("visits").textContent=visitas;
+}
+contadorVisitas();
 
-// ── VITAL SIGNS CANVAS ENGINE ──────────────────────────
-const canvas = document.getElementById('vitalCanvas');
-const ctx = canvas.getContext('2d');
-let vitalPoints = [];
-let vitalColor = '#00e8c8';
-let vitalAnimId = null;
-let vitalPhase = 0;
-let vitalPatternIdx = 0;
+const questions=[
+["Routing","¿Qué distancia administrativa tiene OSPF por defecto?",["90","100","110","120"],2],
+["Routing","¿Qué distancia administrativa tiene EIGRP interno?",["90","100","110","120"],0],
+["Routing","¿Qué distancia administrativa tiene RIP?",["90","100","110","120"],3],
+["Routing","¿Qué comando muestra la tabla de enrutamiento IPv4?",["show vlan brief","show ip route","show interfaces trunk","show mac address-table"],1],
+["Routing","¿Qué métrica usa RIP?",["Costo","Saltos","Bandwidth","Delay"],1],
+["Routing","¿Cuál es el máximo de saltos permitido por RIP?",["10","15","16","255"],1],
+["Routing","¿Qué protocolo usa el algoritmo DUAL?",["OSPF","BGP","EIGRP","RIP"],2],
+["Routing","¿Qué comando muestra vecinos EIGRP?",["show ip eigrp neighbors","show ip ospf neighbor","show bgp summary","show standby"],0],
+["Routing","¿Qué ruta tiene mayor preferencia si todas tienen igual prefijo?",["Mayor métrica","Menor distancia administrativa","Mayor distancia administrativa","Ruta más antigua"],1],
+["Routing","¿Qué técnica permite usar varias rutas de igual costo?",["ECMP","NAT","VTP","DTP"],0],
 
-const STAGE_COLORS = ['#00e8c8','#ffb340','#4a9eff','#4dffa0','#b48fff'];
-const STAGE_LABELS = ['FUENTES','DATASET','KG BUILD','NEO4J','ML'];
+["OSPF","¿Qué algoritmo utiliza OSPF?",["Bellman-Ford","SPF/Dijkstra","DUAL","Path Vector"],1],
+["OSPF","¿Qué área OSPF es el backbone?",["Área 1","Área 10","Área 0","NSSA"],2],
+["OSPF","¿Qué router conecta áreas OSPF?",["DR","BDR","ABR","ASBR"],2],
+["OSPF","¿Qué router redistribuye rutas externas hacia OSPF?",["DR","ABR","ASBR","BDR"],2],
+["OSPF","¿Qué estado indica adyacencia completa?",["Init","2-Way","Exchange","Full"],3],
+["OSPF","¿Qué comando muestra vecinos OSPF?",["show ip ospf neighbor","show ip bgp","show vlan","show etherchannel"],0],
+["OSPF","¿Qué tipo de LSA representa rutas externas?",["Tipo 1","Tipo 2","Tipo 3","Tipo 5"],3],
+["OSPF","¿Qué tipo de red OSPF elige DR y BDR?",["Point-to-point","Broadcast","Loopback","Tunnel"],1],
+["OSPF","¿Qué métrica usa OSPF?",["Saltos","Costo","AS Path","Weight"],1],
+["OSPF","¿Qué comando muestra información general de OSPF?",["show ip protocols","show spanning-tree","show interfaces switchport","show access-lists"],0],
 
-// ECG-like patterns per stage (y offsets relative to center, normalized -1..1)
-const PATTERNS = [
-  // Stage 0 — fuentes: pulso suave biomed
-  [0,0,.05,.05,-.05,-.05,0,.8,-.4,.1,0,0,.05,-.05,0,.6,-.3,.08,0,0],
-  // Stage 1 — dataset: spikes binarios (0/1)
-  [0,0,.6,.6,0,0,-.6,-.6,0,0,.6,.6,0,0,-.6,-.6,0,0,.6,.6],
-  // Stage 2 — KG: red pattern, más complejo
-  [0,.1,.4,-.2,.3,-.4,.2,-.1,.5,-.5,.3,-.2,.4,-.3,.1,.2,-.1,.4,-.4,.1],
-  // Stage 3 — Neo4j: almacenamiento, pulso sólido
-  [0,0,.7,.7,.3,.3,-.1,0,.7,.7,.3,.3,-.1,0,.7,.7,.3,.3,-.1,0],
-  // Stage 4 — ML: neural spikes, activo
-  [0,.3,-.2,.5,-.4,.2,-.3,.6,-.5,.3,-.2,.4,-.3,.2,.5,-.4,.3,-.2,.6,-.5],
-];
+["BGP","¿Qué puerto TCP utiliza BGP?",["22","80","179","443"],2],
+["BGP","¿Qué tipo de protocolo es BGP?",["Distance Vector","Link State","Path Vector","Hybrid Layer 2"],2],
+["BGP","¿Qué atributo BGP es propietario de Cisco?",["MED","Weight","AS Path","Origin"],1],
+["BGP","¿Qué atributo se usa para preferir rutas dentro del AS?",["Local Preference","MED","Next Hop","Community"],0],
+["BGP","¿Qué atributo ayuda a prevenir loops entre AS?",["Metric","AS Path","Cost","Delay"],1],
+["BGP","¿Qué comando muestra resumen de vecinos BGP?",["show ip bgp summary","show ip route ospf","show vlan brief","show standby brief"],0],
+["BGP","¿Qué significa eBGP?",["BGP interno","BGP externo","BGP cifrado","BGP experimental"],1],
+["BGP","¿Qué atributo indica el siguiente salto?",["Next Hop","Weight","Origin","MED"],0],
+["BGP","¿Qué atributo influye en tráfico entrante desde otros AS?",["MED","Router ID","OSPF Cost","STP Priority"],0],
+["BGP","¿Qué comando anuncia una red en BGP?",["network","neighbor","router-id","passive-interface"],0],
 
-function resizeCanvas(){
-  const wrap = document.getElementById('conveyorWrap');
-  canvas.width  = wrap.clientWidth;
-  canvas.height = wrap.clientHeight;
+["Switching","¿Qué protocolo evita bucles de capa 2?",["STP","OSPF","BGP","NTP"],0],
+["Switching","¿Qué estándar usa Rapid Spanning Tree?",["802.1D","802.1w","802.1Q","802.11"],1],
+["Switching","¿Qué encapsulación se usa en troncales VLAN modernas?",["ISL","802.1Q","PPP","HDLC"],1],
+["Switching","¿Qué protocolo estándar negocia EtherChannel?",["PAgP","LACP","DTP","CDP"],1],
+["Switching","¿Qué protocolo propietario Cisco negocia EtherChannel?",["LACP","PAgP","LLDP","SNMP"],1],
+["Switching","¿Qué comando muestra VLANs?",["show vlan brief","show ip route","show bgp summary","show access-list"],0],
+["Switching","¿Qué función tiene PortFast?",["Acelerar puertos hacia hosts","Crear VPN","Traducir NAT","Filtrar rutas BGP"],0],
+["Switching","¿Qué protege contra BPDUs en puertos de acceso?",["BPDU Guard","VTP","NAT","QoS"],0],
+["Switching","¿Qué protocolo permite descubrir vecinos Cisco?",["CDP","DNS","DHCP","FTP"],0],
+["Switching","¿Qué alternativa estándar existe a CDP?",["LLDP","LACP","VTP","HSRP"],0],
+
+["Switching","¿Qué protocolo proporciona gateway redundante Cisco?",["HSRP","OSPF","STP","VTP"],0],
+["Switching","¿Qué protocolo FHRP es estándar abierto?",["HSRP","VRRP","GLBP","DTP"],1],
+["Switching","¿Qué protocolo Cisco permite balanceo de gateway?",["GLBP","VRRP","RIP","MPLS"],0],
+["Switching","¿Qué comando muestra estado de HSRP?",["show standby brief","show vlan brief","show ip bgp","show cdp"],0],
+["Switching","¿Qué es una VLAN?",["Dominio lógico de broadcast","Ruta estática","Túnel VPN","ACL extendida"],0],
+["Switching","¿Qué modo de puerto transporta varias VLANs?",["Access","Trunk","Routed","Loopback"],1],
+["Switching","¿Qué VLAN se usa por defecto en switches Cisco?",["1","10","99","1002"],0],
+["Switching","¿Qué tecnología agrupa enlaces físicos?",["EtherChannel","HSRP","NAT","ACL"],0],
+["Switching","¿Qué comando verifica troncales?",["show interfaces trunk","show ip route","show bgp","show ntp"],0],
+["Switching","¿Qué tecnología separa tráfico en capa 2?",["VLAN","DNS","NTP","FTP"],0],
+
+["Seguridad","¿Qué tecnología filtra tráfico según reglas?",["ACL","STP","VTP","CDP"],0],
+["Seguridad","¿Qué tipo de ACL filtra por IP origen?",["Estándar","Extendida","Dinámica","Reflexiva"],0],
+["Seguridad","¿Qué tipo de ACL filtra origen, destino y puertos?",["Estándar","Extendida","Simple","Nativa"],1],
+["Seguridad","¿Qué tecnología traduce IP privadas a públicas?",["NAT","STP","VLAN","OSPF"],0],
+["Seguridad","¿Qué tipo de NAT usa puertos para muchos hosts?",["Static NAT","Dynamic NAT","PAT","NAT64"],2],
+["Seguridad","¿Qué protocolo permite administración segura remota?",["Telnet","SSH","FTP","HTTP"],1],
+["Seguridad","¿Qué protocolo cifra tráfico web?",["HTTP","HTTPS","TFTP","SNMPv1"],1],
+["Seguridad","¿Qué versión de SNMP es más segura?",["SNMPv1","SNMPv2c","SNMPv3","SNMP Lite"],2],
+["Seguridad","¿Qué función cumple DHCP Snooping?",["Evitar servidores DHCP falsos","Crear VLANs","Crear rutas","Balancear enlaces"],0],
+["Seguridad","¿Qué protege contra ARP spoofing?",["Dynamic ARP Inspection","PortFast","VTP","DTP"],0],
+
+["QoS","¿Qué tecnología prioriza tráfico crítico?",["QoS","NAT","STP","DHCP"],0],
+["QoS","¿Qué tráfico suele ser más sensible a jitter?",["Voz","Correo","Backups","Descargas"],0],
+["QoS","¿Qué campo IPv4 se usa para clasificación moderna?",["DSCP","TTL","ID","Checksum"],0],
+["QoS","¿Qué valor DSCP se asocia comúnmente a voz?",["EF","AF11","CS1","BE"],0],
+["QoS","¿Qué significa policing?",["Limitar tráfico","Crear VLAN","Enrutar OSPF","Elegir DR"],0],
+["QoS","¿Qué significa shaping?",["Suavizar tráfico","Eliminar rutas","Crear ACL","Asignar IP"],0],
+["QoS","¿Qué cola se usa para tráfico de baja latencia?",["LLQ","FIFO","DNS","VTP"],0],
+["QoS","¿Qué clase suele usar best effort?",["Tráfico no prioritario","Voz","Video crítico","Control"],0],
+["QoS","¿Qué problema afecta videollamadas por variación de retardo?",["Jitter","NAT","VTP","ARP"],0],
+["QoS","¿Qué problema representa paquetes perdidos?",["Packet loss","Trunking","Root bridge","Route map"],0],
+
+["Wireless","¿Qué estándar pertenece a redes WiFi?",["802.11","802.3","802.1Q","802.1D"],0],
+["Wireless","¿Qué dispositivo administra APs en empresa?",["WLC","Router CE","Servidor FTP","Switch no administrable"],0],
+["Wireless","¿Qué banda tiene mayor alcance normalmente?",["2.4 GHz","5 GHz","6 GHz","60 GHz"],0],
+["Wireless","¿Qué banda suele tener más velocidad y menos interferencia?",["2.4 GHz","5 GHz","900 MHz","AM"],1],
+["Wireless","¿Qué identifica una red inalámbrica?",["SSID","VLAN ID","AS Path","Root ID"],0],
+["Wireless","¿Qué método de seguridad WiFi es más moderno?",["WEP","WPA","WPA2/WPA3","Abierta"],2],
+["Wireless","¿Qué protocolo puede autenticar usuarios WiFi empresarial?",["802.1X","802.1D","802.3ad","802.1Q"],0],
+["Wireless","¿Qué servidor suele usarse con 802.1X?",["RADIUS","DNS","TFTP","FTP"],0],
+["Wireless","¿Qué problema ocurre cuando dos APs usan canales superpuestos?",["Interferencia","NAT","OSPF Full","BGP Loop"],0],
+["Wireless","¿Qué mide RSSI?",["Potencia de señal","Ancho de banda WAN","Costo OSPF","Prioridad STP"],0],
+
+["Automatización","¿Qué formato es común en APIs REST?",["JSON","STP","VLAN","ARP"],0],
+["Automatización","¿Qué método HTTP consulta información?",["GET","POST","PUT","DELETE"],0],
+["Automatización","¿Qué método HTTP crea recursos?",["GET","POST","PATCH","TRACE"],1],
+["Automatización","¿Qué método HTTP actualiza recursos completos?",["GET","POST","PUT","OPTIONS"],2],
+["Automatización","¿Qué método HTTP elimina recursos?",["GET","DELETE","POST","HEAD"],1],
+["Automatización","¿Qué herramienta Cisco usa APIs para gestión de red?",["Cisco DNA Center","VTP","STP","RIP"],0],
+["Automatización","¿Qué lenguaje es muy usado para automatizar redes?",["Python","HTML solamente","CSS","SQL únicamente"],0],
+["Automatización","¿Qué formato usa indentación y es común en Ansible?",["YAML","MP3","JPEG","EXE"],0],
+["Automatización","¿Qué es NETCONF?",["Protocolo de gestión de red","Protocolo WiFi","Tipo de VLAN","Algoritmo STP"],0],
+["Automatización","¿Qué es RESTCONF?",["API basada en HTTP para redes","Protocolo de voz","Cifrado WiFi","Tipo de NAT"],0],
+
+["Routing","¿Qué protocolo asigna direcciones IP automáticamente?",["DNS","DHCP","NTP","SMTP"],1],
+["Routing","¿Qué protocolo resuelve nombres a IP?",["DNS","DHCP","FTP","SNMP"],0],
+["Routing","¿Qué protocolo sincroniza hora?",["NTP","DNS","HTTP","ARP"],0],
+["Routing","¿Qué protocolo descubre MAC a partir de IP en IPv4?",["ARP","DNS","BGP","SNMP"],0],
+["Routing","¿Qué protocolo reemplaza ARP en IPv6?",["NDP","RIP","VTP","DTP"],0],
+["Routing","¿Qué dirección IPv6 representa loopback?",["::1","fe80::1","2001::1","ff02::1"],0],
+["Routing","¿Qué prefijo IPv6 suele ser link-local?",["fe80::/10","2000::/3","ff00::/8","::/0"],0],
+["Routing","¿Qué ruta representa default IPv4?",["0.0.0.0/0","127.0.0.1","255.255.255.255","224.0.0.5"],0],
+["Routing","¿Qué ruta representa default IPv6?",["::/0","::1/128","fe80::/10","ff00::/8"],0],
+["Routing","¿Qué comando prueba conectividad?",["ping","show vlan","copy run start","reload"],0]
+].map((q,i)=>({id:i+1,category:q[0],question:q[1],options:q[2],answer:q[3],answered:false,selected:null}));
+
+let filteredQuestions=[...questions];
+let index=0;
+let score=0;
+
+const questionEl=document.getElementById("question");
+const optionsEl=document.getElementById("options");
+const feedbackEl=document.getElementById("feedback");
+const categoryEl=document.getElementById("category");
+const scoreEl=document.getElementById("score");
+const currentEl=document.getElementById("current");
+const totalEl=document.getElementById("total");
+const percentEl=document.getElementById("percent");
+const progressBar=document.getElementById("progressBar");
+const categoryFilter=document.getElementById("categoryFilter");
+
+function renderQuestion(){
+const item=filteredQuestions[index];
+if(!item){
+questionEl.textContent="No hay preguntas en esta categoría.";
+optionsEl.innerHTML="";
+categoryEl.textContent="Sin datos";
+feedbackEl.textContent="";
+updateStats();
+return;
 }
 
-function drawVital(){
-  if(!canvas.width) return;
-  const W = canvas.width, H = canvas.height;
-  const cy = H / 2;
-  const amp = H * 0.28;
+categoryEl.textContent=item.category;
+questionEl.textContent=`${item.id}. ${item.question}`;
+optionsEl.innerHTML="";
+feedbackEl.textContent="";
 
-  ctx.clearRect(0,0,W,H);
+item.options.forEach((option,optionIndex)=>{
+const btn=document.createElement("button");
+btn.className="option";
+btn.textContent=option;
 
-  // trailing glow line
-  const pat = PATTERNS[vitalPatternIdx];
-  const pts = [];
-  const segs = W / (pat.length - 1);
-  for(let i=0;i<pat.length;i++){
-    const px = (i / (pat.length-1)) * W;
-    // shift by phase for scroll effect
-    const shifted = ((i + vitalPhase) % pat.length);
-    const si = Math.floor(shifted) % pat.length;
-    const ni = (si+1) % pat.length;
-    const frac = shifted - Math.floor(shifted);
-    const y = cy - (pat[si]*(1-frac) + pat[ni]*frac) * amp;
-    pts.push({x:px,y});
-  }
-
-  // draw glow (wide, faint)
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for(let i=1;i<pts.length;i++){
-    const mx = (pts[i-1].x + pts[i].x)/2;
-    const my = (pts[i-1].y + pts[i].y)/2;
-    ctx.quadraticCurveTo(pts[i-1].x, pts[i-1].y, mx, my);
-  }
-  ctx.strokeStyle = vitalColor;
-  ctx.lineWidth = 8;
-  ctx.globalAlpha = 0.08;
-  ctx.stroke();
-
-  // draw main line
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for(let i=1;i<pts.length;i++){
-    const mx = (pts[i-1].x + pts[i].x)/2;
-    const my = (pts[i-1].y + pts[i].y)/2;
-    ctx.quadraticCurveTo(pts[i-1].x, pts[i-1].y, mx, my);
-  }
-  ctx.strokeStyle = vitalColor;
-  ctx.lineWidth = 1.8;
-  ctx.globalAlpha = 0.75;
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  // moving scan dot
-  const dotX = ((vitalPhase * 40) % W);
-  const dotIdx = Math.floor((dotX/W) * (pts.length-1));
-  const dotY = pts[Math.min(dotIdx, pts.length-1)]?.y ?? cy;
-  ctx.beginPath();
-  ctx.arc(dotX, dotY, 3.5, 0, Math.PI*2);
-  ctx.fillStyle = vitalColor;
-  ctx.globalAlpha = 0.9;
-  ctx.fill();
-  // dot glow
-  ctx.beginPath();
-  ctx.arc(dotX, dotY, 8, 0, Math.PI*2);
-  const gr = ctx.createRadialGradient(dotX,dotY,0,dotX,dotY,8);
-  gr.addColorStop(0, vitalColor+'55');
-  gr.addColorStop(1, 'transparent');
-  ctx.fillStyle = gr;
-  ctx.globalAlpha = 1;
-  ctx.fill();
-
-  vitalPhase += 0.055;
+if(item.answered){
+if(optionIndex===item.answer)btn.classList.add("correct");
+if(optionIndex===item.selected&&optionIndex!==item.answer)btn.classList.add("wrong");
 }
 
-function startVital(stageIdx){
-  vitalColor = STAGE_COLORS[stageIdx] || '#00e8c8';
-  vitalPatternIdx = stageIdx;
-  vitalStageLbl.textContent = STAGE_LABELS[stageIdx] || '';
-  vitalStageLbl.style.color = vitalColor;
-  if(!vitalAnimId){
-    (function loop(){vitalAnimId=requestAnimationFrame(loop);drawVital()})();
-  }
+btn.onclick=()=>selectAnswer(optionIndex);
+optionsEl.appendChild(btn);
+});
+
+updateStats();
 }
 
-function stopVital(){
-  if(vitalAnimId){cancelAnimationFrame(vitalAnimId);vitalAnimId=null;}
-  if(ctx&&canvas.width) ctx.clearRect(0,0,canvas.width,canvas.height);
-  vitalStageLbl.textContent='IDLE';
-  vitalStageLbl.style.color='rgba(0,232,200,.45)';
+function selectAnswer(optionIndex){
+const item=filteredQuestions[index];
+if(item.answered)return;
+
+item.answered=true;
+item.selected=optionIndex;
+
+if(optionIndex===item.answer){
+score++;
+feedbackEl.textContent="✔️ Correcto. Excelente respuesta.";
+feedbackEl.style.color="#22c55e";
+}else{
+feedbackEl.textContent=`❌ Incorrecto. Respuesta correcta: ${item.options[item.answer]}`;
+feedbackEl.style.color="#ef4444";
 }
 
-// ── TOKEN DEFINITIONS per stage ──────────────────────────
-const TOKEN_SETS = [
-  // 0 — fuentes biomédicas
-  [{txt:'LitCovid',bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
-   {txt:'DrugBank',bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
-   {txt:'UniProt', bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
-   {txt:'Kaggle',  bg:'#2d1e00',bdr:'#ffb340',clr:'#ffb340'}],
-  // 1 — dataset encoding
-  [{txt:'Yes→1',bg:'#1a0a12',bdr:'#ff6b8a',clr:'#ff6b8a'},
-   {txt:'No→0', bg:'#0a1020',bdr:'#7a98c4',clr:'#7a98c4'},
-   {txt:'Yes→1',bg:'#1a0a12',bdr:'#ff6b8a',clr:'#ff6b8a'},
-   {txt:'No→0', bg:'#0a1020',bdr:'#7a98c4',clr:'#7a98c4'}],
-  // 2 — KG building
-  [{txt:'RDF triple',   bg:'#001a2d',bdr:'#4a9eff',clr:'#4a9eff'},
-   {txt:':Paciente',    bg:'#0a1a3a',bdr:'#93c5fd',clr:'#93c5fd'},
-   {txt:'[:TIENE]→',   bg:'#1a0a12',bdr:'#ff6b8a',clr:'#ff6b8a'},
-   {txt:':COVID-19',   bg:'#071e10',bdr:'#4dffa0',clr:'#4dffa0'}],
-  // 3 — Neo4j storage
-  [{txt:'Nodo→Neo4j',  bg:'#003d36',bdr:'#00e8c8',clr:'#00e8c8'},
-   {txt:'MERGE(n)',    bg:'#001a2d',bdr:'#4a9eff',clr:'#4a9eff'},
-   {txt:'Cypher ✓',   bg:'#071e10',bdr:'#4dffa0',clr:'#4dffa0'},
-   {txt:'Relación ✓', bg:'#22183a',bdr:'#b48fff',clr:'#b48fff'}],
-  // 4 — ML (estático, no cambia)
-  [{txt:'Machine Learning',bg:'#22183a',bdr:'#b48fff',clr:'#b48fff'}],
-];
-
-let tokenTimers=[];
-let mlTokenInterval=null;
-
-function clearTokens(){
-  tokenTimers.forEach(t=>clearTimeout(t));tokenTimers=[];
-  if(mlTokenInterval){clearInterval(mlTokenInterval);mlTokenInterval=null;}
-  tokenLayer.innerHTML='';
+renderQuestion();
 }
 
-function spawnToken(cfg, delayMs, durMs, yOffset){
-  const t=setTimeout(()=>{
-    const el=document.createElement('div');
-    el.className='vtoken run';
-    el.textContent=cfg.txt;
-    el.style.setProperty('--dur', durMs+'ms');
-    el.style.background=cfg.bg;
-    el.style.border='1px solid '+cfg.bdr;
-    el.style.color=cfg.clr;
-    el.style.top=(yOffset!=null ? yOffset+'px' : '50%');
-    el.style.transform=yOffset!=null?'none':'translateY(-50%)';
-    el.style.boxShadow='0 0 10px '+cfg.bdr+'44';
-    tokenLayer.appendChild(el);
-    setTimeout(()=>el.remove(), durMs+200);
-  },delayMs);
-  tokenTimers.push(t);
+function nextQuestion(){
+if(index<filteredQuestions.length-1){
+index++;
+renderQuestion();
+}
 }
 
-function launchTokens(stageIdx){
-  clearTokens();
-  const set = TOKEN_SETS[stageIdx];
-  if(!set) return;
-
-  if(stageIdx===4){
-    // ML — un solo token que se queda fijo centrado, no viaja
-    const el=document.createElement('div');
-    el.textContent='Machine Learning';
-    el.style.cssText=`position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
-      padding:6px 14px;border-radius:8px;
-      background:#22183a;border:1px solid #b48fff;color:#b48fff;
-      box-shadow:0 0 18px #b48fff44;white-space:nowrap;
-      opacity:0;transition:opacity .6s ease;pointer-events:none;`;
-    tokenLayer.appendChild(el);
-    setTimeout(()=>el.style.opacity='1',300);
-    return;
-  }
-
-  const DUR = 8000;
-  const yPositions=[null,null,null,null]; // null = center 50%
-  set.forEach((cfg,j)=>{
-    spawnToken(cfg, j*1800, DUR, null);
-    // loop them
-    const loopInterval = set.length * 1800;
-    for(let k=1; k<=4; k++){
-      spawnToken(cfg, j*1800 + k*loopInterval, DUR, null);
-    }
-  });
+function previousQuestion(){
+if(index>0){
+index--;
+renderQuestion();
+}
 }
 
-const msgs = [
-  'Consumiendo las diferentes fuentes de datos...',
-  'Preparando y transformando el dataset de pacientes...',
-  'Construyendo el Knowledge Graph con fuentes y dataset...',
-  'Transformando con Neosemantics y almacenando en Neo4j...',
-  'Iniciando el proceso de Machine Learning...'
-];
-
-// ──────────────────────────────
-// Step HTML generators
-// ──────────────────────────────
-function step0(){
-  return `<div class="src-grid">
-    <div class="src-card" id="sc0">
-      <span class="src-icon">📄</span>
-      <strong>LitCovid</strong>
-      <small>Literatura científica sobre COVID-19 indexada en PubMed</small>
-      <span class="src-badge badge-bio">Biomédica</span>
-    </div>
-    <div class="src-card" id="sc1">
-      <span class="src-icon">💊</span>
-      <strong>DrugBank</strong>
-      <small>Base de datos de fármacos, mecanismos e interacciones</small>
-      <span class="src-badge badge-bio">Biomédica</span>
-    </div>
-    <div class="src-card" id="sc2">
-      <span class="src-icon">🧬</span>
-      <strong>UniProt</strong>
-      <small>Proteínas, genes y datos moleculares de organismos</small>
-      <span class="src-badge badge-onto">Ontología</span>
-    </div>
-    <div class="src-card" id="sc3">
-      <span class="src-icon">📊</span>
-      <strong>Kaggle Dataset</strong>
-      <small>Dataset de síntomas y diagnósticos de pacientes COVID</small>
-      <span class="src-badge badge-ds">Dataset</span>
-    </div>
-  </div>`;
+function updateStats(){
+const total=filteredQuestions.length;
+const progress=total===0?0:Math.round(((index+1)/total)*100);
+totalEl.textContent=total;
+scoreEl.textContent=score;
+currentEl.textContent=total===0?0:index+1;
+percentEl.textContent=`${progress}%`;
+progressBar.style.width=`${progress}%`;
 }
 
-function step1(){
-  return `<div class="ds-wrap">
-    <div class="ds-box">
-      <div class="ds-box-label"><span style="background:var(--rose)"></span><span style="color:var(--rose)">ANTES · RAW DATA</span></div>
-      <table class="tbl">
-        <tr><th>Fever</th><th>Cough</th><th>Fatigue</th><th>COVID</th></tr>
-        <tr><td class="val-yes">Yes</td><td class="val-yes">Yes</td><td class="val-no">No</td><td class="val-yes">Yes</td></tr>
-        <tr><td class="val-no">No</td><td class="val-yes">Yes</td><td class="val-yes">Yes</td><td class="val-no">No</td></tr>
-        <tr><td class="val-yes">Yes</td><td class="val-no">No</td><td class="val-yes">Yes</td><td class="val-yes">Yes</td></tr>
-      </table>
-    </div>
-    <div class="ds-arrow">→</div>
-    <div class="ds-box">
-      <div class="ds-box-label"><span style="background:var(--teal)"></span><span style="color:var(--teal)">DESPUÉS · ENCODED</span></div>
-      <table class="tbl">
-        <tr><th>Fever</th><th>Cough</th><th>Fatigue</th><th>COVID</th></tr>
-        <tr><td class="val-1">1</td><td class="val-1">1</td><td class="val-0">0</td><td class="val-1">1</td></tr>
-        <tr><td class="val-0">0</td><td class="val-1">1</td><td class="val-1">1</td><td class="val-0">0</td></tr>
-        <tr><td class="val-1">1</td><td class="val-0">0</td><td class="val-1">1</td><td class="val-1">1</td></tr>
-      </table>
-      <div class="ds-clean-note">✓ Listo para Knowledge Graph</div>
-    </div>
-  </div>
-  <div class="prep-steps">
-    <div class="prep-step" id="ps0"><strong>Codificación</strong><small>Yes/No → valores numéricos 1/0</small></div>
-    <div class="prep-step" id="ps1"><strong>Transformación</strong><small>Estructura lista para integrarse al KG</small></div>
-    <div class="prep-step" id="ps2"><strong>Integración</strong><small>Dataset preparado y validado para el grafo</small></div>
-  </div>`;
+function restartQuiz(){
+questions.forEach(q=>{
+q.answered=false;
+q.selected=null;
+});
+score=0;
+index=0;
+applyFilter();
 }
 
-function step2(){
-  return `<div style="background:rgba(4,8,15,.6);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 14px 14px;margin-top:4px">
-
-  <!-- leyenda superior -->
-  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:10px;font-family:'JetBrains Mono',monospace">
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#4a9eff;border:1.5px solid #93c5fd;flex-shrink:0"></span><span style="color:#7a98c4">Paciente</span></span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#4d1e28;border:1.5px solid #ff6b8a;flex-shrink:0"></span><span style="color:#7a98c4">Síntoma</span></span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#0f3620;border:1.5px solid #4dffa0;flex-shrink:0"></span><span style="color:#7a98c4">Enfermedad</span></span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#22183a;border:1.5px solid #b48fff;flex-shrink:0"></span><span style="color:#7a98c4">Fármaco</span></span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#2d2a10;border:1.5px solid #fde68a;flex-shrink:0"></span><span style="color:#7a98c4">Complicación</span></span>
-  </div>
-
-  <svg id="kgSvg" width="100%" viewBox="0 0 780 400" style="display:block;overflow:visible">
-    <defs>
-      <marker id="mA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path d="M2 2L8 5L2 8" fill="none" stroke="context-stroke" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </marker>
-    </defs>
-
-    <!-- ════ ARISTAS ════ -->
-    <!-- Paciente 1 → Fiebre -->
-    <line id="e1" x1="95" y1="148" x2="220" y2="94" stroke="#4a9eff" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Paciente 1 → Tos seca -->
-    <line id="e2" x1="95" y1="160" x2="224" y2="200" stroke="#4a9eff" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Paciente 1 → Fatiga -->
-    <path id="e3" d="M80 175 Q90 270 195 298" stroke="#4a9eff" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Paciente 2 → Dolor de cabeza -->
-    <line id="e4" x1="685" y1="148" x2="560" y2="94" stroke="#4a9eff" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Paciente 2 → Tos seca (compartido) -->
-    <path id="e5" d="M684 162 Q660 200 556 200" stroke="#4a9eff" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round" stroke-dasharray="5 3"/>
-    <!-- Fiebre → COVID-19 -->
-    <line id="e6" x1="302" y1="88" x2="358" y2="140" stroke="#ff6b8a" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Tos seca → COVID-19 -->
-    <line id="e7" x1="308" y1="200" x2="360" y2="186" stroke="#ff6b8a" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Dolor cabeza → COVID-19 -->
-    <line id="e8" x1="476" y1="88" x2="422" y2="140" stroke="#ff6b8a" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- Fatiga → COVID-19 -->
-    <path id="e9" d="M232 308 Q310 330 360 200" stroke="#ff6b8a" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- COVID-19 → Complicación -->
-    <path id="e10" d="M428 148 Q510 90 560 110" stroke="#4dffa0" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-    <!-- COVID-19 → Fármaco -->
-    <path id="e11" d="M424 196 Q490 260 560 280" stroke="#b48fff" stroke-width="1.5" stroke-opacity="0" fill="none" marker-end="url(#mA)" stroke-linecap="round"/>
-
-    <!-- ════ ETIQUETAS DE ARISTAS ════ -->
-    <rect id="el1bg" x="134" y="105" width="60" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el1" x="164" y="115" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a9eff" opacity="0">TIENE</text>
-
-    <rect id="el2bg" x="134" y="186" width="60" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el2" x="164" y="196" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a9eff" opacity="0">TIENE</text>
-
-    <rect id="el3bg" x="94" y="244" width="60" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el3" x="124" y="254" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a9eff" opacity="0">TIENE</text>
-
-    <rect id="el4bg" x="586" y="105" width="60" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el4" x="616" y="115" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a9eff" opacity="0">TIENE</text>
-
-    <rect id="el5bg" x="590" y="186" width="60" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el5" x="620" y="196" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a9eff" opacity="0">TIENE</text>
-
-    <rect id="el6bg" x="298" y="103" width="90" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el6" x="343" y="113" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#ff6b8a" opacity="0">SÍNTOMA_DE</text>
-
-    <rect id="el7bg" x="298" y="217" width="90" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el7" x="343" y="227" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#ff6b8a" opacity="0">SÍNTOMA_DE</text>
-
-    <rect id="el8bg" x="392" y="103" width="90" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el8" x="437" y="113" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#ff6b8a" opacity="0">SÍNTOMA_DE</text>
-
-    <rect id="el9bg" x="258" y="328" width="90" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el9" x="303" y="338" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#ff6b8a" opacity="0">SÍNTOMA_DE</text>
-
-    <rect id="el10bg" x="452" y="102" width="106" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el10" x="505" y="112" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4dffa0" opacity="0">PUEDE_CAUSAR</text>
-
-    <rect id="el11bg" x="454" y="258" width="100" height="15" rx="3" fill="rgba(4,8,15,.82)" opacity="0"/>
-    <text id="el11" x="504" y="268" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#b48fff" opacity="0">TRATADO_CON</text>
-
-    <!-- ════ NODOS ════ -->
-
-    <!-- Paciente 1 — izquierda -->
-    <g id="n1" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:80px 160px;transform:scale(0)">
-      <circle cx="80" cy="160" r="44" fill="#0a1a3a" stroke="#4a9eff" stroke-width="2"/>
-      <circle cx="80" cy="160" r="44" fill="rgba(74,158,255,.06)"/>
-      <!-- ícono persona -->
-      <circle cx="80" cy="148" r="9" fill="#4a9eff" opacity=".9"/>
-      <path d="M60 175 Q60 162 80 162 Q100 162 100 175" fill="#4a9eff" opacity=".9" stroke="none"/>
-      <text x="80" y="190" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="#93c5fd">Paciente 1</text>
-      <text x="80" y="202" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(147,197,253,.55)">:Paciente</text>
-    </g>
-
-    <!-- Paciente 2 — derecha -->
-    <g id="n2" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:700px 160px">
-      <circle cx="700" cy="160" r="44" fill="#0a1a3a" stroke="#4a9eff" stroke-width="2"/>
-      <circle cx="700" cy="160" r="44" fill="rgba(74,158,255,.06)"/>
-      <circle cx="700" cy="148" r="9" fill="#4a9eff" opacity=".9"/>
-      <path d="M680 175 Q680 162 700 162 Q720 162 720 175" fill="#4a9eff" opacity=".9" stroke="none"/>
-      <text x="700" y="190" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="#93c5fd">Paciente 2</text>
-      <text x="700" y="202" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(147,197,253,.55)">:Paciente</text>
-    </g>
-
-    <!-- Fiebre -->
-    <g id="n3" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:262px 82px">
-      <circle cx="262" cy="82" r="36" fill="#3a0e1a" stroke="#ff6b8a" stroke-width="1.8"/>
-      <text x="262" y="78" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#ffa0b8">Fiebre</text>
-      <text x="262" y="93" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(255,107,138,.55)">:Síntoma</text>
-    </g>
-
-    <!-- Tos seca -->
-    <g id="n4" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:262px 205px">
-      <circle cx="262" cy="205" r="36" fill="#3a0e1a" stroke="#ff6b8a" stroke-width="1.8"/>
-      <text x="262" y="201" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#ffa0b8">Tos seca</text>
-      <text x="262" y="216" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(255,107,138,.55)">:Síntoma</text>
-    </g>
-
-    <!-- Dolor de cabeza -->
-    <g id="n5" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:518px 82px">
-      <circle cx="518" cy="82" r="36" fill="#3a0e1a" stroke="#ff6b8a" stroke-width="1.8"/>
-      <text x="518" y="75" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="#ffa0b8">Dolor</text>
-      <text x="518" y="88" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="#ffa0b8">cabeza</text>
-      <text x="518" y="101" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(255,107,138,.55)">:Síntoma</text>
-    </g>
-
-    <!-- Fatiga -->
-    <g id="n6" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:205px 308px">
-      <circle cx="205" cy="308" r="32" fill="#3a0e1a" stroke="#ff6b8a" stroke-width="1.8"/>
-      <text x="205" y="304" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#ffa0b8">Fatiga</text>
-      <text x="205" y="318" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(255,107,138,.55)">:Síntoma</text>
-    </g>
-
-    <!-- COVID-19 — centro -->
-    <g id="n7" style="opacity:0;transition:opacity .5s ease,transform .5s cubic-bezier(.34,1.5,.64,1);transform-origin:390px 170px">
-      <circle cx="390" cy="170" r="50" fill="#071e10" stroke="#4dffa0" stroke-width="2.5"/>
-      <circle cx="390" cy="170" r="50" fill="rgba(77,255,160,.04)"/>
-      <text x="390" y="163" text-anchor="middle" font-family="Syne,sans-serif" font-size="14" font-weight="800" fill="#4dffa0">COVID-19</text>
-      <text x="390" y="180" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(77,255,160,.6)">:Enfermedad</text>
-    </g>
-
-    <!-- Complicación -->
-    <g id="n8" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:598px 126px">
-      <circle cx="598" cy="126" r="32" fill="#26230a" stroke="#fde68a" stroke-width="1.8"/>
-      <text x="598" y="119" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="#fde68a">Complica-</text>
-      <text x="598" y="132" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="#fde68a">ción</text>
-      <text x="598" y="145" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(253,230,138,.5)">:Condición</text>
-    </g>
-
-    <!-- Fármaco -->
-    <g id="n9" style="opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.34,1.5,.64,1);transform-origin:598px 294px">
-      <circle cx="598" cy="294" r="32" fill="#1a1030" stroke="#b48fff" stroke-width="1.8"/>
-      <text x="598" y="290" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700" fill="#d0b8ff">Fármaco</text>
-      <text x="598" y="304" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="rgba(180,143,255,.55)">:Droga</text>
-    </g>
-
-    <!-- nota arista discontinua -->
-    <line x1="20" y1="380" x2="44" y2="380" stroke="#4a9eff" stroke-width="1.4" stroke-dasharray="5 3"/>
-    <text x="50" y="384" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(122,152,196,.7)">Relación compartida entre pacientes</text>
-  </svg>
-  </div>`;
+function shuffleQuiz(){
+filteredQuestions.sort(()=>Math.random()-.5);
+index=0;
+renderQuestion();
 }
 
-function step3(){
-  return `<div class="neo-grid">
-    <div class="bridge">
-      <div class="bridge-title">Puente semántico</div>
-      <div class="bridge-flow">
-        <div class="bridge-pill"><span>RDF</span> — Formato semántico para representar entidades y relaciones del grafo</div>
-        <div class="bridge-arr">↓</div>
-        <div class="bridge-pill"><span>Neosemantics</span> — Plugin que traduce RDF y lo importa directamente a Neo4j</div>
-        <div class="bridge-arr">↓</div>
-        <div class="bridge-pill"><span>Neo4j</span> — Recibe nodos y relaciones ya estructurados como grafo nativo</div>
-      </div>
-      <div class="bridge-note"><b>Neosemantics</b> actúa como puente entre el estándar semántico W3C y la base de datos de grafos, eliminando transformaciones manuales.</div>
-    </div>
-    <div class="neo-right">
-      <div class="db-card">
-        <div class="db-badge">Base de datos de grafos</div>
-        <h4>Neo4j</h4>
-        <p>Almacena el Knowledge Graph como nodos, relaciones y propiedades, listo para análisis y consultas Cypher.</p>
-        <div class="db-tags">
-          <span class="db-tag">nodos</span><span class="db-tag">relaciones</span>
-          <span class="db-tag">propiedades</span><span class="db-tag">Cypher</span>
-          <span class="db-tag">índices</span>
-        </div>
-        <div id="dbPulse" class="db-pulse"></div>
-      </div>
-      <div class="db-queries">
-        <div class="db-q" id="db1">(:Paciente)-[:TIENE]→(:Síntoma)</div>
-        <div class="db-q" id="db2">(:Síntoma)-[:SÍNTOMA_DE]→(:COVID19)</div>
-        <div class="db-q" id="db3">(:COVID19)-[:PUEDE_CAUSAR]→(:Complicación)</div>
-        <div class="db-q" id="db4">(:COVID19)-[:TRATADO_CON]→(:Fármaco)</div>
-        <div class="db-q" id="db5">(:Paciente2)-[:TIENE]→(:DolorDeCabeza)</div>
-        <div class="db-q" id="db6">(:Paciente2)-[:TIENE]→(:Fatiga)</div>
-      </div>
-    </div>
-  </div>`;
+function applyFilter(){
+const category=categoryFilter.value;
+filteredQuestions=category==="todas"?[...questions]:questions.filter(q=>q.category===category);
+index=0;
+score=filteredQuestions.filter(q=>q.answered&&q.selected===q.answer).length;
+renderQuestion();
 }
 
-function step4(){
-  return `<div class="ml-hero">
-    <div class="ml-icon-wrap">🤖</div>
-    <h2>Inicio de <em>Machine Learning</em></h2>
-    <p>El Knowledge Graph almacenado en Neo4j está listo para alimentar el proceso de Machine Learning.</p>
-  </div>`;
-}
-
-const steps = [
-  {eye:'ETAPA 01 · FUENTES',       title:'Consumo de fuentes de datos',          html:step0},
-  {eye:'ETAPA 02 · DATASET',        title:'Preparación y transformación del dataset',html:step1},
-  {eye:'ETAPA 03 · KNOWLEDGE GRAPH',title:'Construcción del Knowledge Graph',     html:step2},
-  {eye:'ETAPA 04 · NEO4J',          title:'Almacenamiento en base de datos de grafos',html:step3},
-  {eye:'ETAPA 05 · MACHINE LEARNING',title:'Inicio del proceso de ML',             html:step4},
-];
-
-// ──────────────────────────────
-// Animaciones internas
-// ──────────────────────────────
-let iTimers=[];
-function ciT(){iTimers.forEach(t=>clearTimeout(t));iTimers=[]}
-function iT(fn,ms){const t=setTimeout(fn,ms);iTimers.push(t)}
-
-function animate(i){
-  if(i===0){
-    [0,1,2,3].forEach(j=>iT(()=>{const c=document.getElementById('sc'+j);if(c)c.classList.add('show');},j*200+80));
-  }
-  if(i===1){
-    [0,1,2].forEach(j=>iT(()=>{const p=document.getElementById('ps'+j);if(p)p.classList.add('show');},j*260+180));
-  }
-  if(i===2){
-    const ns=['n1','n2','n3','n4','n5','n6','n7','n8','n9'];
-    ns.forEach((id,j)=>iT(()=>{
-      const n=document.getElementById(id);
-      if(n){n.style.opacity='1';n.style.transform='scale(1)';}
-    },j*160+100));
-    const es=['e1','e2','e3','e4','e5','e6','e7','e8','e9','e10','e11'];
-    const labs=['el1','el1bg','el2','el2bg','el3','el3bg','el4','el4bg','el5','el5bg',
-                'el6','el6bg','el7','el7bg','el8','el8bg','el9','el9bg','el10','el10bg','el11','el11bg'];
-    es.forEach((id,j)=>{
-      iT(()=>{
-        const e=document.getElementById(id);
-        if(e)e.setAttribute('stroke-opacity','0.75');
-        const lb=document.getElementById('el'+(j+1));
-        const lbg=document.getElementById('el'+(j+1)+'bg');
-        if(lb)lb.setAttribute('opacity','1');
-        if(lbg)lbg.setAttribute('opacity','1');
-      },j*180+1600);
-    });
-  }
-  if(i===3){
-    ['db1','db2','db3','db4','db5','db6'].forEach((id,j)=>
-      iT(()=>{const c=document.getElementById(id);if(c)c.classList.add('show');},j*160+120));
-    iT(()=>{const p=document.getElementById('dbPulse');if(p){p.style.opacity='1';p.style.transform='translateX(0)';}},280);
-  }
-}
-
-// ──────────────────────────────
-// Sequencer
-// ──────────────────────────────
-let timers=[];let stepIdx=-1;let playing=false;
-const SHOW=10000;const FADE=600;
-function cT(){timers.forEach(t=>clearTimeout(t));timers=[]}
-
-function resetVisuals(){
-  cT();ciT();
-  stages.forEach(s=>s.classList.remove('active','done'));
-  beams.forEach(b=>b.classList.remove('run'));
-  stopVital();
-  clearTokens();
-  detailBox.classList.remove('visible','hiding');
-  detailContent.innerHTML='';
-  statusEl.textContent='Listo para iniciar.';
-  stepIdx=-1;playing=false;
-}
-
-function paintStages(i){
-  stages.forEach((s,j)=>{
-    s.classList.remove('active','done');
-    if(j<i)s.classList.add('done');
-    if(j===i)s.classList.add('active');
-  });
-  beams.forEach((b,j)=>b.classList.toggle('run',j===i-1));
-}
-
-function showDetail(i){
-  ciT();
-  detailBox.classList.remove('visible','hiding');
-  const m=steps[i];
-  detailEye.textContent=m.eye;
-  detailTitle.textContent=m.title;
-  detailContent.innerHTML=m.html();
-  void detailBox.offsetWidth;
-  detailBox.classList.add('visible');
-  animate(i);
-}
-
-function hideDetail(cb){
-  ciT();
-  detailBox.classList.remove('visible');
-  detailBox.classList.add('hiding');
-  setTimeout(()=>{detailBox.classList.remove('hiding');if(cb)cb();},FADE);
-}
-
-function scheduleStep(i){
-  stepIdx=i;
-  paintStages(i);
-  statusEl.textContent=msgs[i];
-  startVital(i);
-  launchTokens(i);
-  showDetail(i);
-  const t=setTimeout(()=>{
-    hideDetail(()=>{
-      if(i<4&&playing) scheduleStep(i+1);
-      else if(i===4){statusEl.textContent='Secuencia completada. KG listo para ML.';playing=false;}
-    });
-  },SHOW);
-  timers.push(t);
-}
-
-function playSeq(){if(playing)return;resetVisuals();playing=true;scheduleStep(0)}
-function pauseSeq(){cT();ciT();playing=false;statusEl.textContent=(stepIdx>=0?msgs[stepIdx]:'Pausado.')+' (pausado)'}
-
-document.getElementById('playBtn').addEventListener('click',playSeq);
-document.getElementById('pauseBtn').addEventListener('click',pauseSeq);
-document.getElementById('resetBtn').addEventListener('click',()=>{cT();resetVisuals()});
-
-resizeCanvas();
-window.addEventListener('resize',()=>{resizeCanvas();if(vitalAnimId) drawVital();});
-resetVisuals();
+categoryFilter.addEventListener("change",applyFilter);
+renderQuestion();
 </script>
 </body>
 </html>
+```
