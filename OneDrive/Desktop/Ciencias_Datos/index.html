@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz CCNP Pro</title>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif}
 body{min-height:100vh;background:radial-gradient(circle at top left,#00e5ff33,transparent 35%),radial-gradient(circle at bottom right,#7c3aed44,transparent 35%),linear-gradient(135deg,#020617,#0f172a);color:white;padding:25px}
@@ -12,14 +13,14 @@ header{text-align:center;padding:35px 10px}
 header h1{font-size:3rem;color:#38bdf8}
 header p{color:#cbd5e1;margin-top:10px}
 .panel{background:rgba(15,23,42,.9);border:1px solid #38bdf866;border-radius:24px;padding:25px;box-shadow:0 0 35px #38bdf833}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:15px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px}
 .stat{background:#020617;border:1px solid #334155;border-radius:16px;padding:18px;text-align:center}
 .stat strong{display:block;font-size:1.8rem;color:#22d3ee}
 .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 select,button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
 select{background:#020617;color:white;border:1px solid #334155}
 button{background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white}
-button:hover{transform:translateY(-2px)}
+.secondary{background:#1e293b}
 .card{background:linear-gradient(135deg,#111827,#020617);border:1px solid #334155;border-radius:22px;padding:28px}
 .badge{display:inline-block;background:#0e7490;padding:7px 14px;border-radius:999px;margin-bottom:15px}
 .question{font-size:1.45rem;margin-bottom:20px;line-height:1.4}
@@ -29,7 +30,6 @@ button:hover{transform:translateY(-2px)}
 .wrong{background:#7f1d1d!important;border-color:#ef4444!important}
 .feedback{margin-top:18px;font-weight:bold;font-size:1.1rem}
 .footer{margin-top:25px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.secondary{background:#1e293b}
 .progress{height:12px;background:#1e293b;border-radius:999px;overflow:hidden;margin:18px 0}
 .progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#22d3ee,#22c55e)}
 @media(max-width:600px){body{padding:14px}header h1{font-size:2.2rem}.question{font-size:1.2rem}}
@@ -54,7 +54,7 @@ button:hover{transform:translateY(-2px)}
 
 <div class="controls">
 <select id="categoryFilter">
-<option value="todas">Todas las categorías</option>
+<option value="todas">Todas</option>
 <option value="Routing">Routing</option>
 <option value="Switching">Switching</option>
 <option value="OSPF">OSPF</option>
@@ -103,7 +103,6 @@ const questions=[
 ["Routing","¿Qué comando muestra vecinos EIGRP?",["show ip eigrp neighbors","show ip ospf neighbor","show bgp summary","show standby"],0],
 ["Routing","¿Qué ruta tiene mayor preferencia si todas tienen igual prefijo?",["Mayor métrica","Menor distancia administrativa","Mayor distancia administrativa","Ruta más antigua"],1],
 ["Routing","¿Qué técnica permite usar varias rutas de igual costo?",["ECMP","NAT","VTP","DTP"],0],
-
 ["OSPF","¿Qué algoritmo utiliza OSPF?",["Bellman-Ford","SPF/Dijkstra","DUAL","Path Vector"],1],
 ["OSPF","¿Qué área OSPF es el backbone?",["Área 1","Área 10","Área 0","NSSA"],2],
 ["OSPF","¿Qué router conecta áreas OSPF?",["DR","BDR","ABR","ASBR"],2],
@@ -114,7 +113,6 @@ const questions=[
 ["OSPF","¿Qué tipo de red OSPF elige DR y BDR?",["Point-to-point","Broadcast","Loopback","Tunnel"],1],
 ["OSPF","¿Qué métrica usa OSPF?",["Saltos","Costo","AS Path","Weight"],1],
 ["OSPF","¿Qué comando muestra información general de OSPF?",["show ip protocols","show spanning-tree","show interfaces switchport","show access-lists"],0],
-
 ["BGP","¿Qué puerto TCP utiliza BGP?",["22","80","179","443"],2],
 ["BGP","¿Qué tipo de protocolo es BGP?",["Distance Vector","Link State","Path Vector","Hybrid Layer 2"],2],
 ["BGP","¿Qué atributo BGP es propietario de Cisco?",["MED","Weight","AS Path","Origin"],1],
@@ -125,7 +123,6 @@ const questions=[
 ["BGP","¿Qué atributo indica el siguiente salto?",["Next Hop","Weight","Origin","MED"],0],
 ["BGP","¿Qué atributo influye en tráfico entrante desde otros AS?",["MED","Router ID","OSPF Cost","STP Priority"],0],
 ["BGP","¿Qué comando anuncia una red en BGP?",["network","neighbor","router-id","passive-interface"],0],
-
 ["Switching","¿Qué protocolo evita bucles de capa 2?",["STP","OSPF","BGP","NTP"],0],
 ["Switching","¿Qué estándar usa Rapid Spanning Tree?",["802.1D","802.1w","802.1Q","802.11"],1],
 ["Switching","¿Qué encapsulación se usa en troncales VLAN modernas?",["ISL","802.1Q","PPP","HDLC"],1],
@@ -136,7 +133,6 @@ const questions=[
 ["Switching","¿Qué protege contra BPDUs en puertos de acceso?",["BPDU Guard","VTP","NAT","QoS"],0],
 ["Switching","¿Qué protocolo permite descubrir vecinos Cisco?",["CDP","DNS","DHCP","FTP"],0],
 ["Switching","¿Qué alternativa estándar existe a CDP?",["LLDP","LACP","VTP","HSRP"],0],
-
 ["Switching","¿Qué protocolo proporciona gateway redundante Cisco?",["HSRP","OSPF","STP","VTP"],0],
 ["Switching","¿Qué protocolo FHRP es estándar abierto?",["HSRP","VRRP","GLBP","DTP"],1],
 ["Switching","¿Qué protocolo Cisco permite balanceo de gateway?",["GLBP","VRRP","RIP","MPLS"],0],
@@ -147,7 +143,6 @@ const questions=[
 ["Switching","¿Qué tecnología agrupa enlaces físicos?",["EtherChannel","HSRP","NAT","ACL"],0],
 ["Switching","¿Qué comando verifica troncales?",["show interfaces trunk","show ip route","show bgp","show ntp"],0],
 ["Switching","¿Qué tecnología separa tráfico en capa 2?",["VLAN","DNS","NTP","FTP"],0],
-
 ["Seguridad","¿Qué tecnología filtra tráfico según reglas?",["ACL","STP","VTP","CDP"],0],
 ["Seguridad","¿Qué tipo de ACL filtra por IP origen?",["Estándar","Extendida","Dinámica","Reflexiva"],0],
 ["Seguridad","¿Qué tipo de ACL filtra origen, destino y puertos?",["Estándar","Extendida","Simple","Nativa"],1],
@@ -158,7 +153,6 @@ const questions=[
 ["Seguridad","¿Qué versión de SNMP es más segura?",["SNMPv1","SNMPv2c","SNMPv3","SNMP Lite"],2],
 ["Seguridad","¿Qué función cumple DHCP Snooping?",["Evitar servidores DHCP falsos","Crear VLANs","Crear rutas","Balancear enlaces"],0],
 ["Seguridad","¿Qué protege contra ARP spoofing?",["Dynamic ARP Inspection","PortFast","VTP","DTP"],0],
-
 ["QoS","¿Qué tecnología prioriza tráfico crítico?",["QoS","NAT","STP","DHCP"],0],
 ["QoS","¿Qué tráfico suele ser más sensible a jitter?",["Voz","Correo","Backups","Descargas"],0],
 ["QoS","¿Qué campo IPv4 se usa para clasificación moderna?",["DSCP","TTL","ID","Checksum"],0],
@@ -169,7 +163,6 @@ const questions=[
 ["QoS","¿Qué clase suele usar best effort?",["Tráfico no prioritario","Voz","Video crítico","Control"],0],
 ["QoS","¿Qué problema afecta videollamadas por variación de retardo?",["Jitter","NAT","VTP","ARP"],0],
 ["QoS","¿Qué problema representa paquetes perdidos?",["Packet loss","Trunking","Root bridge","Route map"],0],
-
 ["Wireless","¿Qué estándar pertenece a redes WiFi?",["802.11","802.3","802.1Q","802.1D"],0],
 ["Wireless","¿Qué dispositivo administra APs en empresa?",["WLC","Router CE","Servidor FTP","Switch no administrable"],0],
 ["Wireless","¿Qué banda tiene mayor alcance normalmente?",["2.4 GHz","5 GHz","6 GHz","60 GHz"],0],
@@ -180,7 +173,6 @@ const questions=[
 ["Wireless","¿Qué servidor suele usarse con 802.1X?",["RADIUS","DNS","TFTP","FTP"],0],
 ["Wireless","¿Qué problema ocurre cuando dos APs usan canales superpuestos?",["Interferencia","NAT","OSPF Full","BGP Loop"],0],
 ["Wireless","¿Qué mide RSSI?",["Potencia de señal","Ancho de banda WAN","Costo OSPF","Prioridad STP"],0],
-
 ["Automatización","¿Qué formato es común en APIs REST?",["JSON","STP","VLAN","ARP"],0],
 ["Automatización","¿Qué método HTTP consulta información?",["GET","POST","PUT","DELETE"],0],
 ["Automatización","¿Qué método HTTP crea recursos?",["GET","POST","PATCH","TRACE"],1],
@@ -191,7 +183,6 @@ const questions=[
 ["Automatización","¿Qué formato usa indentación y es común en Ansible?",["YAML","MP3","JPEG","EXE"],0],
 ["Automatización","¿Qué es NETCONF?",["Protocolo de gestión de red","Protocolo WiFi","Tipo de VLAN","Algoritmo STP"],0],
 ["Automatización","¿Qué es RESTCONF?",["API basada en HTTP para redes","Protocolo de voz","Cifrado WiFi","Tipo de NAT"],0],
-
 ["Routing","¿Qué protocolo asigna direcciones IP automáticamente?",["DNS","DHCP","NTP","SMTP"],1],
 ["Routing","¿Qué protocolo resuelve nombres a IP?",["DNS","DHCP","FTP","SNMP"],0],
 ["Routing","¿Qué protocolo sincroniza hora?",["NTP","DNS","HTTP","ARP"],0],
@@ -221,6 +212,7 @@ const categoryFilter=document.getElementById("categoryFilter");
 
 function renderQuestion(){
 const item=filteredQuestions[index];
+
 if(!item){
 questionEl.textContent="No hay preguntas en esta categoría.";
 optionsEl.innerHTML="";
@@ -261,7 +253,7 @@ item.selected=optionIndex;
 
 if(optionIndex===item.answer){
 score++;
-feedbackEl.textContent="✔️ Correcto. Excelente respuesta.";
+feedbackEl.textContent="✔️ Correcto.";
 feedbackEl.style.color="#22c55e";
 }else{
 feedbackEl.textContent=`❌ Incorrecto. Respuesta correcta: ${item.options[item.answer]}`;
@@ -324,4 +316,3 @@ renderQuestion();
 </script>
 </body>
 </html>
-```
